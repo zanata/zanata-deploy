@@ -30,6 +30,14 @@
 ###     GPG_SIGNING_KEY
 ###         (Required) The GPG Key used to sign the feed.
 ###
+###     STABILITY
+###         The stability of this release.
+###         Valid values: Auto, stable, testing, developer, buggy, insecure
+###         Auto means it will give Stable to official release, and Testing for
+###         release candidate (rc).
+###         Default: Auto
+: ${STABILITY:=Auto}
+###
 ###     BRANCH
 ###         (Experimental) the script branch to be used.
 ###         If you want to try something new in a pull request,
@@ -64,8 +72,9 @@ function create_feed(){
 
     if [[ ! -e $feedFile ]]; then
         echo_stderr "Creating $feedFile from $templateFile - version $version"
-        $HOME_BIN_DIR/0template $templateFile version=$version artifactVersion=$artifactVersion
+        $HOME_BIN_DIR/0template $templateFile version=$version artifactVersion=$artifactVersion stability=$Stability
     fi
+
     $HOME_BIN_DIR/0repo add $feedFile
 }
 
@@ -82,6 +91,16 @@ artifactVersion=$VERSION
 
 ## 0install accept rcX but not rc-X
 version=$(sed -e 's/rc-/rc/' <<<$VERSION)
+
+if [[ $STABILITY = Auto ]];then
+    if [[ $artifactVersion =~ rc-[0-9][0-9]* ]]; then
+        Stability=testing
+    else
+	Stability=stable
+    fi
+else
+    Stability=$STABILITY
+fi
 
 DIST_URL="http://search.maven.org/remotecontent?filepath=org/zanata/$Package/$artifactVersion/$Package-$artifactVersion-dist.zip"
 
