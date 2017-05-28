@@ -102,7 +102,7 @@ else
     Stability=$STABILITY
 fi
 
-DIST_URL="http://search.maven.org/remotecontent?filepath=org/zanata/$Package/$artifactVersion/$Package-$artifactVersion-dist.zip"
+DIST_URL_PREFIX="https://repo1.maven.org/maven2/org/zanata/$Package"
 
 ## Download 0install tools
 mkdir -p $HOME_BIN_DIR
@@ -118,7 +118,7 @@ if [[ ! -e $ZEROREPO_DIR/$Package ]] ;then
     mkdir -p archive-backups
     curl -o 0repo-config.py --silent --insecure --location "https://raw.githubusercontent.com/zanata/zanata-scripts/$BRANCH/0install/0repo-config.in.py"
     zerorepo_config_set '.repo.bak' 'REPOSITORY_BASE_URL' 'https://raw.githubusercontent.com/zanata/zanata.github.io/master/files/0install'
-    zerorepo_config_set '.archive.bak' 'ARCHIVES_BASE_URL' "http://search.maven.org/remotecontent?filepath=org/zanata/$Package/"
+    zerorepo_config_set '.archive.bak' 'ARCHIVES_BASE_URL' "$DIST_URL_PREFIX"
     zerorepo_config_set '.gpg.bak' 'GPG_SIGNING_KEY' "$GPG_SIGNING_KEY"
     zerorepo_config_set '.gpg.bak' 'FEED_UPLOAD_DIR' "$FEED_UPLOAD_DIR"
     $HOME_BIN_DIR/0repo register
