@@ -10,40 +10,17 @@ public static final String REPO_NAME = "zanata-platform"
 public static final String PROJ_BASE = 'github.com/zanata/zanata-platform'
 
 @Field
+public static final String PROJ_BRANCH = 'release'
+
+@Field
 public static final String ZANATA_SCRIPTS_BASE = 'github.com/zanata/zanata-scripts'
 
-@Field
-public static final String ARTIFACT_ID = "platform"
-
 // The projects that provides version (the others just use project.version)
-@Field
-public static final String MAVEN_VERSION_PROJECTS = 'build-tools,parent'
-
-@Field
-public static final String MAVEN_RELEASE_OPTIONS = "-Dallow.deploy.skip=false -Dcheckstyle.skip=true " +
-  "-Denforcer.skip=true -Dfindbugs.skip=true " +
-  "-Dgpg.executable=gpg2 -Dgpg.useagent=true " +
-  "-Doptimise "+
-  "-DskipArqTests=true -DskipFuncTests=true -DskipTests=true " +
-  "-DupdateReleaseInfo=true " +
-  "-Prelease"
 
 // The projects to be release to nexus
-@Field
-public static final String NEXUS_RELEASE_PROJECTS = '!server/zanata-test-war,!server/functional-test'
-
-@Field
-public static final String NEXUS_STAGING_OPTIONS = '-e -DnexusUrl=https://oss.sonatype.org/ -DserverId=sonatype-staging -Prelease'
-
-@Field
-public static final String NEXUS_STAGING_PLUGIN = 'org.sonatype.plugins:nexus-staging-maven-plugin'
-
 // TODO: restore to master
 @Field
 public static final String ZANATA_SCRIPTS_BRANCH = 'ZNTA-1803-maven-release-pipeline'
-
-@Field
-public static final String PROJ_BRANCH = 'release'
 
 @Field
 public static final String PIPELINE_LIBRARY_BRANCH = 'v0.3.1'
@@ -70,25 +47,6 @@ def notify
 
 @Field
 def jobName
-
-String[] getStagingRepositoryData(){
-  String[] lines = sh(returnStdout: true,
-    script: "./mvnw $MAVEN_EXTRA_OPTIONS $NEXUS_STAGING_OPTIONS ${NEXUS_STAGING_PLUGIN}:rc-list | sed -n -e '/orgzanata-.* / p'"
-  )?.split('\n')
-  String[] results = new String[2];
-  for(int i=0; i< lines.length ; i++) {
-    echo "stagingRepository=${lines[i]}"
-    String[] tokens = lines[i].split()
-    if (tokens.length < 2) {
-      continue
-    }
-    // tokens[1]: id, tokens[2] state
-    results[0] = new String(tokens[1])
-    results[1] = new String(tokens[2])
-  }
-  return results
-}
-
 
 timestamps {
 // We need a node with release label
@@ -130,10 +88,10 @@ timestamps {
               description: 'Maven extra options',
               name: 'MAVEN_EXTRA_OPTIONS'
             ],
-            [$class: 'BooleanParameterDefinition',
-              defaultValue: false,
-              description: 'Dryrun mode does not push to GitHub and sonatype',
-              name: 'IS_DRYRUN'
+            [$class: 'StringParameterDefinition',
+              defaultValue: 'testBuild',
+              description: '"" for build and commit; "testBuild" for build but not commit; "dryRun" for knowing commands to be run ',
+              name: 'ZANATA_RELEASE_MODE'
             ],
           ]
         ],
@@ -144,9 +102,29 @@ timestamps {
 
     String releaseVersion = params.RELEASE_VERSION
     String developmentVersion = null
-    String tagName
+    String artifactId = REPO_NAME.replaceAll('zanata-','')
+    String tagName = "${artifactId}-${releaseVersion}"
 
-    withEnv(["WORK_ROOT=${env.HOME}/zanata-work-root", "ZANATA_GIT_URL_PREFIX=https://github.com/zanata"]) {
+    def envArray = new ArrayList()
+    envArray.addAll(
+	    sh( returnStdout: true,
+        script: "curl -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh | sed -rn -e '/[A-Z_]*=/ s/^[^A-Z_]*([A-Z_]*=[^}]*)/\\1/p' ",
+      )?.split("\n")
+    )
+
+    envArray.addAll([
+      "MAVEN_EXTRA_OPTIONS=${params.MAVEN_EXTRA_OPTIONS}",
+      "WORK_ROOT=${env.HOME}/zanata-work-root",
+      "ZANATA_GIT_URL_PREFIX=https://github.com/zanata",
+      "ZANATA_RELEASE_MODE=${params.ZANATA_RELEASE_MODE}",
+    ])
+
+    if (params.ZANATA_RELEASE_MODE == 'dryRun') {
+      envArray.add("DryRunMode=1")
+    }
+
+    withEnv(envArray) {
+      echo "MAVEN_RELEASE_OPTIONS=$env.MAVEN_RELEASE_OPTIONS"
       stage('Checkout') {
         // Checkout and test GPG
         notify.started()
@@ -165,8 +143,6 @@ timestamps {
           if (params.RELEASE_VERSION == 'auto') {
             releaseVersion = readMavenPom(file: "${WORK_ROOT}/${REPO_NAME}/parent/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
           }
-
-          tagName = "${ARTIFACT_ID}-${releaseVersion}"
 
           developmentVersion = (sh(returnStdout: true,
             script: "bash $WORKSPACE/zanata-functions run version_next $releaseVersion").trim()) + '-SNAPSHOT'
@@ -193,7 +169,7 @@ timestamps {
           notify.startBuilding()
           echo "releaseNoteVersion: $releaseNoteVersion"
           def releaseNoteStatus = sh(returnStatus: true,
-            script: "bash $WORKSPACE/zanata-release-notes-prepend -j $ARTIFACT_ID $releaseNoteVersion",
+            script: "bash $WORKSPACE/zanata-release-notes-prepend -j $artifactId $releaseNoteVersion",
           )
           echo "releaseNoteStatus: $releaseNoteVersion"
           switch(releaseNoteStatus){
@@ -210,64 +186,33 @@ timestamps {
         }
 
         stage('SetReleaseVersion') {
-          sh "sed -i -e 's|<tag>HEAD</tag>|<tag>${tagName}</tag>|' \$(find . -name pom.xml | xargs )"
-          sh "./mvnw $MAVEN_EXTRA_OPTIONS $MAVEN_RELEASE_OPTIONS -pl $MAVEN_VERSION_PROJECTS versions:set -DnewVersion=$releaseVersion"
-      sh "git commit -a -m 'chore(version): set version $releaseVersion'"
-          String docZanataOrgVersionAnchor=releaseNoteVersion.replaceAll('\\.', '')
-          sh "git tag -a -m 'http://docs.zanata.org/en/release/release-notes/#${docZanataOrgVersionAnchor}' ${tagName}"
+          sh(returnStatus: true,
+            script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $releaseVersion $PLATFORM_MAVEN_VERSION_PROJECT",
+          )
         }
-        stage('MavenDeploy') {
-          String goal = 'deploy'
-          if (params.IS_DRYRUN) {
-            goal = 'verify'
-          }
-          sh "./mvnw $MAVEN_EXTRA_OPTIONS $MAVEN_RELEASE_OPTIONS -pl $NEXUS_RELEASE_PROJECTS $goal"
+        stage('NexusStaging') {
+          sh "bash $WORKSPACE/zanata-nexus-staging $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
         }
         stage('NexusRelease') {
-          // If not DRYRUN, this will closed the OPEN repo, and release the CLOSED repo.
-          while(! params.IS_DRYRUN) {
-            String[] stagingRepositoryResults = getStagingRepositoryData()
-            stagingRepositoryId = stagingRepositoryResults[0]
-            stagingRepositoryState = stagingRepositoryResults[1]
-            echo "stagingRepositoryId=$stagingRepositoryId   stagingRepositoryState=$stagingRepositoryState"
-            switch(stagingRepositoryState) {
-              case "OPEN":
-                sh """
-                  ./mvnw $MAVEN_EXTRA_OPTIONS $NEXUS_STAGING_OPTIONS ${NEXUS_STAGING_PLUGIN}:close\
-                    -DstagingRepositoryId=$stagingRepositoryId
-                  """
-                break
-              case "CLOSED":
-                sh """
-                  ./mvnw $MAVEN_EXTRA_OPTIONS $NEXUS_STAGING_OPTIONS ${NEXUS_STAGING_PLUGIN}:release\
-                    -DstagingRepositoryId=$stagingRepositoryId
-                  """
-                  break
-                default:
-                  break
-            }
-            if (stagingRepositoryState != 'OPEN' && stagingRepositoryState != 'CLOSED') {
-              break
-            }
-          }
+          sh "bash $WORKSPACE/zanata-nexus-release"
         }
         stage('SetSnapshotVersion') {
-          sh "sed -i -e 's|<tag>.*</tag>|<tag>HEAD</tag>|' \$(find . -name pom.xml | xargs )"
-          sh "./mvnw $MAVEN_EXTRA_OPTIONS $MAVEN_RELEASE_OPTIONS -pl $MAVEN_VERSION_PROJECTS versions:set -DnewVersion=$developmentVersion"
-          sh "git commit -a -m 'chore(version): set version $developmentVersion'"
+          sh(returnStatus: true,
+            script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $developmentVersion $PLATFORM_MAVEN_VERSION_PROJECT",
+          )
           withCredentials([
             [$class: 'UsernamePasswordMultiBinding',
               credentialsId: 'zanata-jenkins',
               usernameVariable: 'GIT_USERNAME', passwordVariable: 'GITHUB_OAUTH2_TOKEN'
             ]
           ]) {
-            if (! params.IS_DRYRUN) {
+            if ( params.ZANATA_RELEASE_MODE != '') {
               sh "git push --follow-tags https://$GIT_USERNAME:$GITHUB_OAUTH2_TOKEN@${PROJ_BASE} release"
             }
           }
         }
       }
-      stage('Archive') {
+      stage('ArtifactList') {
         sh("bash $WORKSPACE/zanata-artifact-m2repo -l | sort -u > artifact-list.txt")
         archiveArtifacts(artifacts: 'artifact-list.txt')
       }
