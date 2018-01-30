@@ -105,6 +105,10 @@ timestamps {
     String artifactId = REPO_NAME.replaceAll('zanata-','')
     String tagName = "${artifactId}-${releaseVersion}"
 
+    if (params.ZANATA_RELEASE_MODE != "" ){
+      currentBuild.displayName = currentBuild.displayName + " [${params.ZANATA_RELEASE_MODE}]"
+    }
+
     def envArray = new ArrayList()
     envArray.addAll(
 	    sh( returnStdout: true,
