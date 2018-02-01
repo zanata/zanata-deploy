@@ -237,7 +237,7 @@ function checkout_branch(){
 detect_remote_repo_latest_version(){
     local url=$1
     local tagGlob=$2
-    git ls-remote --tags "$url" "refs/tags/$tagGlob" | awk -F '-' '{ print $2, ($3 == "" )?"zfinal":$3, $4}' | sort -V | tr ' ' '-' | sed -e 's/-zfinal-//g' | tail -n 1
+    git ls-remote --tags "$url" "refs/tags/$tagGlob[^^{}]" | awk -F '-' '{ print $2, ($3 == "" )?"zfinal":$3, $4}' | sort -V | tr ' ' '-' | sed -e 's/-zfinal-//g' | tail -n 1
 }
 
 
