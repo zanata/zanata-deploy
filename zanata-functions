@@ -749,14 +749,14 @@ function version_next(){
 case $(basename $0) in
     bash )
         ## Remote Mode assumed
-        export ZANATA_REMOTE=1
+        export ZANATA_REMOTE_PROGRAM=zanata-functions
         : ${ZANATA_SCRIPTS_BRANCH:=master}
         ;;
     * )
         ;;
 esac
 
-if [[ -n ${ZANATA_REMOTE:-} ]]; then
+if [[ -n ${ZANATA_REMOTE_PROGRAM:-} ]]; then
     source <(curl -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh)
 
     ## We keep a copy in local so help works
@@ -765,9 +765,11 @@ if [[ -n ${ZANATA_REMOTE:-} ]]; then
 
     ZanataEnvSh="$ZanataScriptsDir/zanata-env.sh"
     curl -o "$ZanataEnvSh" -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh
-    ProgramName=zanata-functions
+    ProgramName="$ZANATA_REMOTE_PROGRAM"
     ProgramFullFilename=$ZanataScriptsDir/$ProgramName
-    curl -o $ProgramFullFilename -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-functions
+    if [[ $ProgramName = 'zanata-functions' ]]; then
+        curl -o $ProgramFullFilename -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-functions
+    fi
 else
     ZanataScriptsDir=$(dirname $(realpath ${BASH_SOURCE[0]}))
     ZanataEnvSh="$ZanataScriptsDir/zanata-env.sh"
@@ -798,8 +800,8 @@ case $ProgramName in
                 $@
                 exit $?
                 ;;
-            ?* )
-                failed $EXIT_FATAL_INVALID_OPTIONS "Invalid option $1"
+            * )
+                failed $EXIT_FATAL_INVALID_OPTIONS "Invalid sub-command $1"
                 ;;
         esac
         zanata_script_help_short $ProgramFullFilename

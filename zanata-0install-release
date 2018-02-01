@@ -3,7 +3,7 @@
 ###     zanata-0install-release - release package via 0install
 ###
 ### SYNOPSIS
-###     zanata-0install-release <package>
+###     zanata-0install-release <package> <version>
 ###
 ###
 ### ARGUMENTS
