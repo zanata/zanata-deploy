@@ -49,6 +49,7 @@
 
 HOME_BIN_DIR=$HOME/bin
 FEED_UPLOAD_DIR=$(pwd)
+export ZANATA_REMOTE_PROGRAM=zanata-0install-release
 source <(curl -q https://raw.githubusercontent.com/zanata/zanata-scripts/$BRANCH/zanata-functions)
 
 install_zero_program(){

@@ -757,14 +757,15 @@ case $(basename $0) in
 esac
 
 if [[ -n ${ZANATA_REMOTE_PROGRAM:-} ]]; then
-    source <(curl -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh)
-
     ## We keep a copy in local so help works
-    mkdir -p "$TMP_ROOT"
+    mkdir -p "${TMP_ROOT:=/tmp/zanata}"
     ZanataScriptsDir=$TMP_ROOT
 
+    ## Download zanata-env and zanata-functions so help works
     ZanataEnvSh="$ZanataScriptsDir/zanata-env.sh"
     curl -o "$ZanataEnvSh" -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh
+    source "$ZanataEnvSh"
+
     ProgramName="$ZANATA_REMOTE_PROGRAM"
     ProgramFullFilename=$ZanataScriptsDir/$ProgramName
     if [[ $ProgramName = 'zanata-functions' ]]; then
