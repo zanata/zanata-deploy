@@ -749,30 +749,33 @@ function version_next(){
 case $(basename $0) in
     bash )
         ## Remote Mode assumed
-        ZANATA_REMOTE=1
+        export ZANATA_REMOTE=1
         : ${ZANATA_SCRIPTS_BRANCH:=master}
-        source <(curl -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh)
-
-        ## We keep a copy in local so help works
-        mkdir -p "$TMP_ROOT"
-        ZanataScriptsDir=$TMP_ROOT
-
-        ZanataEnvSh="$ZanataScriptsDir/zanata-env.sh"
-        curl -o "$ZanataEnvSh" -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh
-        ProgramName=zanata-functions
-        ProgramFullFilename=$ZanataScriptsDir/$ProgramName
-        curl -o $ProgramFullFilename -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-functions
         ;;
     * )
-        ZanataScriptsDir=$(dirname $(realpath ${BASH_SOURCE[0]}))
-        ZanataEnvSh="$ZanataScriptsDir/zanata-env.sh"
-        source "$ZanataEnvSh"
-        mkdir -p "$TMP_ROOT"
-
-        ProgramFullFilename=${BASH_SOURCE[$((${#BASH_SOURCE[@]}-1))]}
-        ProgramName=$(basename $ProgramFullFilename)
         ;;
 esac
+
+if [[ -n ${ZANATA_REMOTE:-} ]]; then
+    source <(curl -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh)
+
+    ## We keep a copy in local so help works
+    mkdir -p "$TMP_ROOT"
+    ZanataScriptsDir=$TMP_ROOT
+
+    ZanataEnvSh="$ZanataScriptsDir/zanata-env.sh"
+    curl -o "$ZanataEnvSh" -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh
+    ProgramName=zanata-functions
+    ProgramFullFilename=$ZanataScriptsDir/$ProgramName
+    curl -o $ProgramFullFilename -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-functions
+else
+    ZanataScriptsDir=$(dirname $(realpath ${BASH_SOURCE[0]}))
+    ZanataEnvSh="$ZanataScriptsDir/zanata-env.sh"
+    source "$ZanataEnvSh"
+
+    ProgramFullFilename=${BASH_SOURCE[$((${#BASH_SOURCE[@]}-1))]}
+    ProgramName=$(basename $ProgramFullFilename)
+fi
 
 case $ProgramName in
     *-functions )
