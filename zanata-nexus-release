@@ -14,10 +14,10 @@
 ###
 ### ENVIRONMENT
 ###     ZANATA_RELEASE_MODE:
-###         <empty>  : Default mode. Builds, deploy to staging, and push changes
+###         <empty>  : Default mode. Builds, deploy to nexus staging, and push changes
 ###                to source control
-###         testBuild: Builds,  deploy to staging, but does not push changes to
-###                source control, and nor does it close the staging
+###         testBuild: Builds,  deploy to nexus staging, but does not push changes to
+###                source control, and nor does it close the nexus staging repo
 ###         dryRun   : Only show command to be run.
 : ${ZANATA_RELEASE_MODE:=}
 : ${DryRunMode:=0}
