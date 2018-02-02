@@ -37,9 +37,9 @@
 ###
 ### ENVIRONMENT
 ###     ZANATA_RELEASE_MODE:
-###         <empty>  : Default mode. Builds, deploy to staging, and push changes
+###         <empty>  : Default mode. Builds, deploy to nexus staging, and push changes
 ###                to source control
-###         testBuild: Builds,  deploy to staging, but does not push changes to
+###         testBuild: Builds,  deploy to nexus staging, but does not push changes to
 ###                source control
 ###         dryRun   : Only show command to be run.
 ###
@@ -279,8 +279,8 @@ $ScriptDir/zanata-pom-set-version "$TagPrefix" "$ReleaseVersion" "$MavenVersionP
 print_status " deploy to nexus staging"
 $ScriptDir/zanata-nexus-staging "$NexusReleaseProjects"
 
-## Release artifact in staging
-print_status " Release artifact in staging"
+## Release artifact in nexus staging
+print_status " Release artifact in nexus staging"
 $ScriptDir/zanata-nexus-release "$NexusReleaseProjects"
 
 ## Set to development version
