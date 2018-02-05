@@ -194,12 +194,15 @@ timestamps {
             script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $releaseVersion $PLATFORM_MAVEN_VERSION_PROJECT",
           )
         }
-        stage('NexusStaging') {
-          sh "bash $WORKSPACE/zanata-nexus-staging $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
+        stage('Nexus') {
+          sh "bash $WORKSPACE/zanata-nexus $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
         }
-        stage('NexusRelease') {
-          sh "bash $WORKSPACE/zanata-nexus-release"
-        }
+        //stage('NexusStaging') {
+        //  sh "bash $WORKSPACE/zanata-nexus-staging $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
+        //}
+        //stage('NexusRelease') {
+        //  sh "bash $WORKSPACE/zanata-nexus-release"
+        //}
         stage('SetSnapshotVersion') {
           sh(returnStatus: true,
             script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $developmentVersion $PLATFORM_MAVEN_VERSION_PROJECT",
