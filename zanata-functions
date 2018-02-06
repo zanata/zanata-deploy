@@ -229,6 +229,7 @@ function checkout_branch(){
     git remote update origin > /dev/stderr
     git checkout ${branch} > /dev/stderr
     git pull > /dev/stderr
+    git reset --hard origin/$branch > /dev/stderr
     cd - > /dev/stderr
 }
 
