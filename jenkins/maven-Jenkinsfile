@@ -100,10 +100,6 @@ timestamps {
       properties(projectProperties)
     }
 
-    String releaseVersion = params.RELEASE_VERSION
-    String developmentVersion = null
-    String artifactId = REPO_NAME.replaceAll('zanata-','')
-    String tagName = "${artifactId}-${releaseVersion}"
 
     if (params.ZANATA_RELEASE_MODE != "" ){
       currentBuild.displayName = currentBuild.displayName + " [${params.ZANATA_RELEASE_MODE}]"
@@ -111,7 +107,7 @@ timestamps {
 
     def envArray = new ArrayList()
     envArray.addAll(
-	    sh( returnStdout: true,
+        sh( returnStdout: true,
         script: "curl -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh | sed -rn -e '/[A-Z_]*=/ s/^[^A-Z_]*([A-Z_]*=[^}]*)/\\1/p' ",
       )?.split("\n")
     )
@@ -128,6 +124,11 @@ timestamps {
     }
 
     withEnv(envArray) {
+      String artifactId = REPO_NAME.replaceAll('zanata-','')
+      String releaseVersion = null
+      String developmentVersion = null
+      String tagName = null
+
       echo "MAVEN_RELEASE_OPTIONS=$env.MAVEN_RELEASE_OPTIONS"
       stage('Checkout') {
         // Checkout and test GPG
@@ -146,7 +147,10 @@ timestamps {
           sh "git clean -fdx"
           if (params.RELEASE_VERSION == 'auto') {
             releaseVersion = readMavenPom(file: "${WORK_ROOT}/${REPO_NAME}/parent/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
+          } else {
+            releaseVersion = params.RELEASE_VERSION
           }
+          tagName = "${artifactId}-${releaseVersion}"
 
           developmentVersion = (sh(returnStdout: true,
             script: "bash $WORKSPACE/zanata-functions run version_next $releaseVersion").trim()) + '-SNAPSHOT'
@@ -159,9 +163,10 @@ timestamps {
             error "tag ${tagName} is already in remote"
           }
 
-          String localTagLine = sh(returnStdout: true,
-            script: "git ls-remote . refs/tags/${tagName}")?.trim()
-          if ( localTagLine ){
+          def tagExistExitStatus = sh(returnStatus: true,
+            script: "git show-ref ${tagName}")
+          if ( tagExistExitStatus == 0 ){
+            // Tag exists
             sh "git tag -d $tagName"
           }
         }
