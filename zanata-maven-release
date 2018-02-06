@@ -143,6 +143,9 @@ while getopts "hd:jnPQr:tT" opt;do
 done
 export JustUseCurrentDirectoryMode
 export ZANATA_RELEASE_MODE
+if [[ $ZANATA_RELEASE_MODE == dryRun ]]; then
+    DryRunMode=1
+fi
 export DryRunMode
 
 shift $((OPTIND-1))
