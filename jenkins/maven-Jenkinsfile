@@ -150,6 +150,8 @@ timestamps {
           } else {
             releaseVersion = params.RELEASE_VERSION
           }
+
+	  currentBuild.displayName = currentBuild.displayName + " $releaseVersion"
           tagName = "${artifactId}-${releaseVersion}"
 
           developmentVersion = (sh(returnStdout: true,
