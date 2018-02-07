@@ -201,15 +201,18 @@ timestamps {
             script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $releaseVersion $PLATFORM_MAVEN_VERSION_PROJECT",
           )
         }
-        stage('Nexus') {
-          sh "bash $WORKSPACE/zanata-nexus $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
+	// We cannot use org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy here
+	// It generate following error
+	// [ERROR] Failed to execute goal org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy (default-cli) on project build-tools: The packaging for this project did not assign a file to the build artifact
+        //stage('Nexus') {
+        //  sh "bash $WORKSPACE/zanata-nexus $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
+        //}
+        stage('NexusStaging') {
+          sh "bash $WORKSPACE/zanata-nexus-staging $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
         }
-        //stage('NexusStaging') {
-        //  sh "bash $WORKSPACE/zanata-nexus-staging $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
-        //}
-        //stage('NexusRelease') {
-        //  sh "bash $WORKSPACE/zanata-nexus-release"
-        //}
+        stage('NexusRelease') {
+          sh "bash $WORKSPACE/zanata-nexus-release"
+        }
         stage('SetSnapshotVersion') {
           sh(returnStatus: true,
             script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $developmentVersion $PLATFORM_MAVEN_VERSION_PROJECT",
