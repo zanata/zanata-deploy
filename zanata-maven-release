@@ -281,12 +281,12 @@ $ScriptDir/zanata-pom-set-version "$TagPrefix" "$ReleaseVersion" "$MavenVersionP
 
 ## Deploy to Nexus Staging
 print_status " deploy to nexus staging"
-$ScriptDir/zanata-nexus "$NexusReleaseProjects"
-#$ScriptDir/zanata-nexus-staging "$NexusReleaseProjects"
+#$ScriptDir/zanata-nexus "$NexusReleaseProjects"
+$ScriptDir/zanata-nexus-staging "$NexusReleaseProjects"
 
 ## Release artifact in nexus staging
-#print_status " Release artifact in nexus staging"
-#$ScriptDir/zanata-nexus-release "$NexusReleaseProjects"
+print_status " Release artifact in nexus staging"
+$ScriptDir/zanata-nexus-release "$NexusReleaseProjects"
 
 ## Set to development version
 print_status " Set to development version to $DevelopmentVersion"
