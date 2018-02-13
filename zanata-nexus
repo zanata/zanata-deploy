@@ -1,16 +1,25 @@
 #!/bin/bash
 ### NAME
 ###     zanata-nexus - Release maven artifacts in nexus-staging
+###     via nexus-staging-maven-plugin
 ###
 ### SYNOPSIS
 ###     zanata-nexus [options] [Projects]
 ###
 ### DESCRIPTION
+###     This script is currently not used because 
+###     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy is not a drop-in
+###     replacement. It generate following error
+###    [ERROR] Failed to execute goal org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy (default-cli) on project build-tools:
+###     The packaging for this project did not assign a file to the build artifact.
+###
 ###     This script deploy to nexus staging, close it, and release from it.
 ###
 ###     Note that this script assume you are already in correct directory and
 ###     checkout correct branch.
 ###
+###     plugin docs:
+###         https://github.com/sonatype/nexus-maven-plugins/tree/master/staging/maven-plugin
 ###
 ### ENVIRONMENT
 ###     ZANATA_RELEASE_MODE:
@@ -80,5 +89,4 @@ run_command ./mvnw $MAVEN_NEXUS_STAGING_OPTIONS ${MAVEN_NEXUS_STAGING_PLUGIN}:de
     -DprofileId=org.zanata  ${ProjectOpts}
 
 ## No need to restore DryRunMode in end of the script
-
 

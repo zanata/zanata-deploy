@@ -99,7 +99,7 @@ while getopts "hd:jnPQr:tT" opt;do
 ###         Just show what would be done.
         n )
             DryRunMode=1
-	    ZANATA_RELEASE_MODE=dryRun
+            ZANATA_RELEASE_MODE=dryRun
             ;;
 ###
 ###     -P: Working on pull request branch
@@ -134,7 +134,7 @@ while getopts "hd:jnPQr:tT" opt;do
 ###         This script builds and deploy artifacts to nexus staging,
 ###         but does not push changes to source control.
         T )
-	    ZANATA_RELEASE_MODE=testBuild
+            ZANATA_RELEASE_MODE=testBuild
             ;;
         * )
             failed ${EXIT_FATAL_INVALID_OPTIONS} "$opt"
@@ -265,33 +265,42 @@ NexusReleaseProjects=
 TagPrefix=
 case $RepoName in
     zanata-platform )
-    ## List all artifacts that will be released in sonatype
-    ## as well as zanata-frontend, which is required for MEAD
-	MavenVersionProjects="$PLATFORM_MAVEN_VERSION_PROJECT"
-	NexusReleaseProjects="$PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
-	TagPrefix="${ArtifactId}-"
+        ## chooses projects whose versions should be changed
+        ## eg: -pl build-tools,parent
+        MavenVersionProjects="$PLATFORM_MAVEN_VERSION_PROJECT"
+
+        ## List all artifacts to be released in sonatype nexus
+        ## e.g. !server/zanata-test-war,!server/functional-test
+        NexusReleaseProjects="$PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
+
+        ## the prefix for the git tag, eg platform-
+        TagPrefix="${ArtifactId}-"
         ;;
     * )
         ;;
 esac
 
-## Set to release version
-print_status " Set release version to $ReleaseVersion"
+## Set pom.xml version to release version $ReleaseVersion
+print_status " Set pom.xml version to release version $ReleaseVersion"
 $ScriptDir/zanata-pom-set-version "$TagPrefix" "$ReleaseVersion" "$MavenVersionProjects"
 
-## Deploy to Nexus Staging
+## Build & Deploy to Nexus Staging
 print_status " deploy to nexus staging"
 #$ScriptDir/zanata-nexus "$NexusReleaseProjects"
 $ScriptDir/zanata-nexus-staging "$NexusReleaseProjects"
 
-## Release artifact in nexus staging
-print_status " Release artifact in nexus staging"
-$ScriptDir/zanata-nexus-release "$NexusReleaseProjects"
+## Release staged artifacts from Nexus Staging
+## after which they will be synced to Maven Central
+print_status " Release staged artifacts from Nexus Staging"
+$ScriptDir/zanata-nexus-release -p "$NexusReleaseProjects"
 
-## Set to development version
-print_status " Set to development version to $DevelopmentVersion"
+##  Set pom.xml version to next SNAPSHOT version $DevelopmentVersion
+##  e.g. 4.6.0-SNAPSHOT
+print_status " Set pom.xml version to SNAPSHOT version $DevelopmentVersion"
 $ScriptDir/zanata-pom-set-version "$TagPrefix" "$DevelopmentVersion" "$MavenVersionProjects"
 
-## Push the relevant tags
-run_command git push --follow-tags origin $WorkingBranch
+if [[ -z $ZANATA_RELEASE_MODE ]]; then
+    ## Push the SNAPSHOT commit
+    run_command git push origin $WorkingBranch
+fi
 

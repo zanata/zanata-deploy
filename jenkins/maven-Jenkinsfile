@@ -4,23 +4,7 @@
  */
 
 @Field
-public static final String REPO_NAME = "zanata-platform"
-
-@Field
-public static final String PROJ_BASE = 'github.com/zanata/zanata-platform'
-
-@Field
-public static final String PROJ_BRANCH = 'release'
-
-@Field
-public static final String ZANATA_SCRIPTS_BASE = 'github.com/zanata/zanata-scripts'
-
-// The projects that provides version (the others just use project.version)
-
-// The projects to be release to nexus
-// TODO: restore to master
-@Field
-public static final String ZANATA_SCRIPTS_BRANCH = 'ZNTA-1803-maven-release-pipeline'
+public static final String ORG_BASE = 'github.com/zanata'
 
 @Field
 public static final String PIPELINE_LIBRARY_BRANCH = 'v0.3.1'
@@ -45,25 +29,32 @@ def mainScmGit
 @Field
 def notify
 
-@Field
-def jobName
-
 timestamps {
 // We need a node with release label
   node('release') {
     currentBuild.displayName = currentBuild.displayName + " {${env.NODE_NAME}}"
+
+    // To override following variables, use
+    // "Properties Content" in "Prepare an environment for the run" in Jenkins Web UI
+    String REPO_NAME = (env.REPO_NAME) ?: 'zanata-platform'
+    String PROJ_BASE = (env.PROJ_BASE) ?: "${ORG_BASE}/${REPO_NAME}"
+    String PROJ_BRANCH = (env.PROJ_BRANCH) ?: 'release'
+    String ZANATA_SCRIPTS_BRANCH = (env.ZANATA_SCRIPTS_BRANCH) ?: 'master'
+    String WORK_ROOT = (env.WORK_ROOT) ?: "${env.HOME}/zanata-work-root"
+
+    String artifactId
+
     ansiColor('xterm') {
-      pipelineLibraryScmGit = new ScmGit(env, steps, 'https://github.com/zanata/zanata-pipeline-library')
+      pipelineLibraryScmGit = new ScmGit(env, steps, "https://${ORG_BASE}/zanata-pipeline-library")
       pipelineLibraryScmGit.init(PIPELINE_LIBRARY_BRANCH)
-      zanataScriptsScmGit = new ScmGit(env, steps, "https://$ZANATA_SCRIPTS_BASE")
+      zanataScriptsScmGit = new ScmGit(env, steps, "https://${ORG_BASE}/zanata-scripts")
       zanataScriptsScmGit.init(ZANATA_SCRIPTS_BRANCH)
-      mainScmGit = new ScmGit(env, steps, "https://$PROJ_BASE")
+      mainScmGit = new ScmGit(env, steps, "https://${PROJ_BASE}")
       mainScmGit.init(PROJ_BRANCH)
       notify = new Notifier(env, steps, currentBuild,
-          pipelineLibraryScmGit, mainScmGit, 'zanata-scripts-release',
+          pipelineLibraryScmGit, mainScmGit, 'maven-Jenkinsfile',
       )
 
-      jobName = env.JOB_NAME
       def projectProperties = [
         [
           $class: 'BuildDiscarderProperty',
@@ -84,11 +75,6 @@ timestamps {
               name: 'RELEASE_VERSION'
             ],
             [$class: 'StringParameterDefinition',
-              defaultValue: '-T 1',
-              description: 'Maven extra options',
-              name: 'MAVEN_EXTRA_OPTIONS'
-            ],
-            [$class: 'StringParameterDefinition',
               defaultValue: 'testBuild',
               description: '"" for build and commit; "testBuild" for build but not commit; "dryRun" for knowing commands to be run ',
               name: 'ZANATA_RELEASE_MODE'
@@ -105,17 +91,67 @@ timestamps {
       currentBuild.displayName = currentBuild.displayName + " [${params.ZANATA_RELEASE_MODE}]"
     }
 
+    stage('Checkout') {
+      notify.started()
+
+      // This checkout zanata-scripts
+      checkout scm
+
+      artifactId = sh(returnStdout: true,
+          script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}").trim()
+
+      sh "mkdir -p ${WORK_ROOT}/${REPO_NAME}"
+
+      withEnv(["WORK_ROOT=$WORK_ROOT","ZANATA_GIT_URL_PREFIX=https://${ORG_BASE}"]) {
+        dir("${WORK_ROOT}/${REPO_NAME}") {
+          git branch: PROJ_BRANCH, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}"
+
+          if (params.RELEASE_VERSION == 'auto') {
+            if (REPO_NAME == 'zanata-platform') {
+              releaseVersion = readMavenPom(file: "${WORK_ROOT}/${REPO_NAME}/parent/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
+            } else {
+              releaseVersion = readMavenPom(file: "${WORK_ROOT}/${REPO_NAME}/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
+            }
+          } else {
+            releaseVersion = params.RELEASE_VERSION
+          }
+
+          currentBuild.displayName = currentBuild.displayName + " $releaseVersion"
+          tagName = "${artifactId}-${releaseVersion}"
+
+          developmentVersion = sh(returnStdout: true,
+            script: "bash $WORKSPACE/zanata-functions run version_next $releaseVersion",
+          ).trim() + '-SNAPSHOT'
+          echo "Release Version=$releaseVersion     Development Version=$developmentVersion"
+
+          // Is this version already been tag/build ?
+          String remoteTagLine = sh(returnStdout: true,
+            script: "git ls-remote https://github.com/zanata/$REPO_NAME refs/tags/${tagName}",
+          )?.trim()
+          if ( remoteTagLine ){
+            error "tag ${tagName} is already in remote"
+          }
+
+          def tagExistExitStatus = sh(returnStatus: true,
+            script: "git show-ref ${tagName}",
+          )
+          if ( tagExistExitStatus == 0 ){
+            // Remove only local tag (possibly from a failed build)
+            sh "git tag -d $tagName"
+          }
+        }
+      }
+    }
+
     def envArray = new ArrayList()
     envArray.addAll(
-        sh( returnStdout: true,
-        script: "curl -q https://raw.githubusercontent.com/zanata/zanata-scripts/$ZANATA_SCRIPTS_BRANCH/zanata-env.sh | sed -rn -e '/[A-Z_]*=/ s/^[^A-Z_]*([A-Z_]*=[^}]*)/\\1/p' ",
+      sh( returnStdout: true,
+        script: "sed -rn -e '/[A-Z_]*=/ s/^[^A-Z_]*([A-Z_]*=[^}]*)/\\1/p' $WORKSPACE/zanata-env.sh",
       )?.split("\n")
     )
 
     envArray.addAll([
-      "MAVEN_EXTRA_OPTIONS=${params.MAVEN_EXTRA_OPTIONS}",
-      "WORK_ROOT=${env.HOME}/zanata-work-root",
-      "ZANATA_GIT_URL_PREFIX=https://github.com/zanata",
+      "WORK_ROOT=${WORK_ROOT}",
       "ZANATA_RELEASE_MODE=${params.ZANATA_RELEASE_MODE}",
     ])
 
@@ -124,55 +160,9 @@ timestamps {
     }
 
     withEnv(envArray) {
-      String artifactId = REPO_NAME.replaceAll('zanata-','')
       String releaseVersion = null
       String developmentVersion = null
       String tagName = null
-
-      echo "MAVEN_RELEASE_OPTIONS=$env.MAVEN_RELEASE_OPTIONS"
-      stage('Checkout') {
-        // Checkout and test GPG
-        notify.started()
-
-          // Note that this checkout zanata-scripts
-        checkout scm
-
-        sh "bash $WORKSPACE/zanata-functions run ensure_repo $REPO_NAME"
-        sh "bash $WORKSPACE/zanata-functions run checkout_branch $REPO_NAME $PROJ_BRANCH $WORK_ROOT"
-        // Match the origin/release
-
-    // Remove tag (possibly from a failed build)
-        dir("${WORK_ROOT}/${REPO_NAME}") {
-          sh "git reset --hard origin/$PROJ_BRANCH"
-          sh "git clean -fdx"
-          if (params.RELEASE_VERSION == 'auto') {
-            releaseVersion = readMavenPom(file: "${WORK_ROOT}/${REPO_NAME}/parent/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
-          } else {
-            releaseVersion = params.RELEASE_VERSION
-          }
-
-	  currentBuild.displayName = currentBuild.displayName + " $releaseVersion"
-          tagName = "${artifactId}-${releaseVersion}"
-
-          developmentVersion = (sh(returnStdout: true,
-            script: "bash $WORKSPACE/zanata-functions run version_next $releaseVersion").trim()) + '-SNAPSHOT'
-          echo "Release Version=$releaseVersion     Development Version=$developmentVersion"
-
-          // Is this version already been tag/build ?
-          String remoteTagLine = sh(returnStdout: true,
-            script: "git ls-remote https://github.com/zanata/$REPO_NAME refs/tags/${tagName}")?.trim()
-          if ( remoteTagLine ){
-            error "tag ${tagName} is already in remote"
-          }
-
-          def tagExistExitStatus = sh(returnStatus: true,
-            script: "git show-ref ${tagName}")
-          if ( tagExistExitStatus == 0 ){
-            // Tag exists
-            sh "git tag -d $tagName"
-          }
-        }
-      }
 
       dir ("${WORK_ROOT}/${REPO_NAME}") {
         String releaseNoteVersion = releaseVersion.replaceAll('-.*','')
@@ -183,7 +173,7 @@ timestamps {
             script: "bash $WORKSPACE/zanata-release-notes-prepend -j $artifactId $releaseNoteVersion",
           )
           echo "releaseNoteStatus: $releaseNoteVersion"
-          switch(releaseNoteStatus){
+          switch(releaseNoteStatus) {
             case 0: // EXIT_OK
               // ReleaseNotes updated. Git commit is done by zanata-release-notes-prepend
               break
@@ -201,9 +191,9 @@ timestamps {
             script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $releaseVersion $PLATFORM_MAVEN_VERSION_PROJECT",
           )
         }
-	// We cannot use org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy here
-	// It generate following error
-	// [ERROR] Failed to execute goal org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy (default-cli) on project build-tools: The packaging for this project did not assign a file to the build artifact
+        // We cannot use org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy here
+        // It generate following error
+        // [ERROR] Failed to execute goal org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy (default-cli) on project build-tools: The packaging for this project did not assign a file to the build artifact
         //stage('Nexus') {
         //  sh "bash $WORKSPACE/zanata-nexus $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
         //}
@@ -211,7 +201,7 @@ timestamps {
           sh "bash $WORKSPACE/zanata-nexus-staging $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
         }
         stage('NexusRelease') {
-          sh "bash $WORKSPACE/zanata-nexus-release"
+          sh "bash $WORKSPACE/zanata-nexus-release -p $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
         }
         stage('SetSnapshotVersion') {
           sh(returnStatus: true,
@@ -224,7 +214,7 @@ timestamps {
             ]
           ]) {
             if ( params.ZANATA_RELEASE_MODE == '') {
-              sh "git push --follow-tags https://$GIT_USERNAME:$GITHUB_OAUTH2_TOKEN@${PROJ_BASE} release"
+              sh "git push https://$GIT_USERNAME:$GITHUB_OAUTH2_TOKEN@${PROJ_BASE} release"
             }
           }
         }
