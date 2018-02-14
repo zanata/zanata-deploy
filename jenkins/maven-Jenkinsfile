@@ -40,11 +40,10 @@ timestamps {
     String PROJ_BASE = (env.PROJ_BASE) ?: "${ORG_BASE}/${REPO_NAME}"
     String PROJ_BRANCH = (env.PROJ_BRANCH) ?: 'release'
     String ZANATA_SCRIPTS_BRANCH = (env.ZANATA_SCRIPTS_BRANCH) ?: 'master'
-    String WORK_ROOT = (env.WORK_ROOT) ?: "${env.JENKINS_HOME}/zanata-work-root"
-    // dir(...) does not seem to populate nested variables well
-    String WORK_DIR = "/home/jenkins/zanata-work-root/${REPO_NAME}"
+    String WORK_ROOT = (env.WORK_ROOT) ?: "/home/jenkins/zanata-work-root"
+    String WORK_DIR = "${WORK_ROOT}/${REPO_NAME}"
 
-    String artifactId
+    String releaseVersion = null
 
     ansiColor('xterm') {
       pipelineLibraryScmGit = new ScmGit(env, steps, "https://${ORG_BASE}/zanata-pipeline-library")
@@ -99,7 +98,7 @@ timestamps {
       // This checkout zanata-scripts
       checkout scm
 
-      artifactId = sh(returnStdout: true,
+      String artifactId = sh(returnStdout: true,
           script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}"
       ).trim()
 
@@ -163,7 +162,6 @@ timestamps {
     }
 
     withEnv(envArray) {
-      String releaseVersion = null
       String developmentVersion = null
       String tagName = null
 
