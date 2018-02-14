@@ -42,7 +42,7 @@ timestamps {
     String ZANATA_SCRIPTS_BRANCH = (env.ZANATA_SCRIPTS_BRANCH) ?: 'master'
     String WORK_ROOT = (env.WORK_ROOT) ?: "${env.JENKINS_HOME}/zanata-work-root"
     // dir(...) does not seem to populate nested variables well
-    String WORK_DIR = "${WORK_ROOT}/${REPO_NAME}"
+    String WORK_DIR = "/home/jenkins/zanata-work-root/${REPO_NAME}"
 
     String artifactId
 
@@ -100,11 +100,14 @@ timestamps {
       checkout scm
 
       artifactId = sh(returnStdout: true,
-          script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}").trim()
+          script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}"
+      ).trim()
 
       withEnv(["WORK_ROOT=$WORK_ROOT","ZANATA_GIT_URL_PREFIX=https://${ORG_BASE}"]) {
+        sh("bash $WORKSPACE/zanata-functions run ensure_repo ${REPO_NAME}")
+        sh("bash $WORKSPACE/zanata-functions run checkout_branch ${REPO_NAME} ${PROJ_BRANCH} ${WORK_ROOT}")
         dir(WORK_DIR) {
-          git branch: PROJ_BRANCH, changelog: false, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}.git"
+//          git branch: PROJ_BRANCH, changelog: false, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}.git"
 
           if (params.RELEASE_VERSION == 'auto') {
             if (REPO_NAME == 'zanata-platform') {
