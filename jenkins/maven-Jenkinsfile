@@ -40,7 +40,9 @@ timestamps {
     String PROJ_BASE = (env.PROJ_BASE) ?: "${ORG_BASE}/${REPO_NAME}"
     String PROJ_BRANCH = (env.PROJ_BRANCH) ?: 'release'
     String ZANATA_SCRIPTS_BRANCH = (env.ZANATA_SCRIPTS_BRANCH) ?: 'master'
-    String WORK_ROOT = (env.WORK_ROOT) ?: "${env.HOME}/zanata-work-root"
+    String WORK_ROOT = (env.WORK_ROOT) ?: "${env.JENKINS_HOME}/zanata-work-root"
+    // dir(...) does not seem to populate nested variables well
+    String WORK_DIR = "${WORK_ROOT}/${REPO_NAME}"
 
     String artifactId
 
@@ -100,17 +102,15 @@ timestamps {
       artifactId = sh(returnStdout: true,
           script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}").trim()
 
-      sh "mkdir -p ${WORK_ROOT}/${REPO_NAME}"
-
       withEnv(["WORK_ROOT=$WORK_ROOT","ZANATA_GIT_URL_PREFIX=https://${ORG_BASE}"]) {
-        dir("${WORK_ROOT}/${REPO_NAME}") {
-          git branch: PROJ_BRANCH, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}"
+        dir(WORK_DIR) {
+          git branch: PROJ_BRANCH, changelog: false, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}.git"
 
           if (params.RELEASE_VERSION == 'auto') {
             if (REPO_NAME == 'zanata-platform') {
-              releaseVersion = readMavenPom(file: "${WORK_ROOT}/${REPO_NAME}/parent/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
+              releaseVersion = readMavenPom(file: "${WORK_DIR}/parent/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
             } else {
-              releaseVersion = readMavenPom(file: "${WORK_ROOT}/${REPO_NAME}/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
+              releaseVersion = readMavenPom(file: "${WORK_DIR}/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
             }
           } else {
             releaseVersion = params.RELEASE_VERSION
@@ -164,7 +164,7 @@ timestamps {
       String developmentVersion = null
       String tagName = null
 
-      dir ("${WORK_ROOT}/${REPO_NAME}") {
+      dir (WORK_DIR) {
         String releaseNoteVersion = releaseVersion.replaceAll('-.*','')
         stage('ReleaseNotes') {
           notify.startBuilding()
