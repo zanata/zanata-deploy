@@ -125,10 +125,7 @@ if [ "$StagingRepositoryState" = "OPEN" ];then
             ## Push when success
             run_command git push --follow-tags origin $(get_current_branch)
         fi
-    elif 
-
     fi
-
 
     if [[ $ZANATA_RELEASE_MODE = testBuild ]]; then
         export DryRunMode=0

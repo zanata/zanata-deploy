@@ -44,6 +44,7 @@ timestamps {
     String WORK_DIR = "${WORK_ROOT}/${REPO_NAME}"
 
     String releaseVersion = null
+    String artifactId = null
 
     ansiColor('xterm') {
       pipelineLibraryScmGit = new ScmGit(env, steps, "https://${ORG_BASE}/zanata-pipeline-library")
@@ -98,7 +99,7 @@ timestamps {
       // This checkout zanata-scripts
       checkout scm
 
-      String artifactId = sh(returnStdout: true,
+      artifactId = sh(returnStdout: true,
           script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}"
       ).trim()
 
@@ -166,24 +167,26 @@ timestamps {
       String tagName = null
 
       dir (WORK_DIR) {
-        String releaseNoteVersion = releaseVersion.replaceAll('-.*','')
-        stage('ReleaseNotes') {
-          notify.startBuilding()
-          echo "releaseNoteVersion: $releaseNoteVersion"
-          def releaseNoteStatus = sh(returnStatus: true,
-            script: "bash $WORKSPACE/zanata-release-notes-prepend -j $artifactId $releaseNoteVersion",
-          )
-          echo "releaseNoteStatus: $releaseNoteVersion"
-          switch(releaseNoteStatus) {
-            case 0: // EXIT_OK
-              // ReleaseNotes updated. Git commit is done by zanata-release-notes-prepend
-              break
-            case 40: // EXIT_RETURN_FALSE
-              // ReleaseNotes does not changed
-              break
-            default:
-              error "Status($releaseNoteStatus) Failed to get related jira issues"
-              break
+        if (REPO_NAME == 'zanata-platform'){
+          stage('ReleaseNotes') {
+            notify.startBuilding()
+            String releaseNoteVersion = releaseVersion.replaceAll(/[-.]/, '')
+            echo "releaseNoteVersion: $releaseNoteVersion"
+            def releaseNoteStatus = sh(returnStatus: true,
+              script: "bash $WORKSPACE/zanata-release-notes-prepend -j $artifactId $releaseNoteVersion",
+            )
+            echo "releaseNoteStatus: $releaseNoteStatus"
+            switch(releaseNoteStatus) {
+              case 0: // EXIT_OK
+                // ReleaseNotes updated. Git commit is done by zanata-release-notes-prepend
+                break
+              case 40: // EXIT_RETURN_FALSE
+                // ReleaseNotes does not changed
+                break
+              default:
+                error "Status($releaseNoteStatus) Failed to get related jira issues"
+                break
+            }
           }
         }
 
