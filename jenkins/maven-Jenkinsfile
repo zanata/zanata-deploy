@@ -43,8 +43,25 @@ timestamps {
     String WORK_ROOT = (env.WORK_ROOT) ?: "/home/jenkins/zanata-work-root"
     String WORK_DIR = "${WORK_ROOT}/${REPO_NAME}"
 
+    def envArray = new ArrayList()
+
     String releaseVersion = null
     String artifactId = null
+
+    //  chooses projects whose versions should be changed
+    //  To be passed as -pl <Projects> in maven
+    String setPomVersionProjects = null
+
+    //  List all artifacts to be released in sonatype nexus
+    //  To be passed as -pl <Projects> in maven
+    String nexusStagingProjects = null
+
+    //  pom.xml that has valid version
+    //  e.g. parent/pom.xml in zanata-platform
+    String versionPomXml = "${WORK_DIR}/pom.xml"
+
+    boolean hasReleaseNotes = false
+
 
     ansiColor('xterm') {
       pipelineLibraryScmGit = new ScmGit(env, steps, "https://${ORG_BASE}/zanata-pipeline-library")
@@ -103,18 +120,38 @@ timestamps {
           script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}"
       ).trim()
 
-      withEnv(["WORK_ROOT=$WORK_ROOT","ZANATA_GIT_URL_PREFIX=https://${ORG_BASE}"]) {
+      envArray.addAll(
+        sh( returnStdout: true,
+        script: "sed -rn -e '/[A-Z_]*=/ s/^[^A-Z_]*([A-Z_]*=[^}]*)/\\1/p' $WORKSPACE/zanata-env.sh",
+        )?.split("\n")
+      )
+
+      envArray.addAll([
+        "WORK_ROOT=${WORK_ROOT}",
+        "ZANATA_RELEASE_MODE=${params.ZANATA_RELEASE_MODE}",
+        "ZANATA_GIT_URL_PREFIX=https://${ORG_BASE}",
+        ])
+
+      if (params.ZANATA_RELEASE_MODE == 'dryRun') {
+        envArray.add("DryRunMode=1")
+      }
+
+      withEnv(envArray) {
+        // Different repo has different configuration
+        if (REPO_NAME == 'zanata-platform') {
+          setPomVersionProjects = env.PLATFORM_MAVEN_VERSION_PROJECT
+          nexusStagingProjects = env.PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS
+          versionPomXml = "${WORK_DIR}/parent/pom.xml"
+          hasReleaseNotes = true
+        }
+
         sh("bash $WORKSPACE/zanata-functions run ensure_repo ${REPO_NAME}")
         sh("bash $WORKSPACE/zanata-functions run checkout_branch ${REPO_NAME} ${PROJ_BRANCH} ${WORK_ROOT}")
         dir(WORK_DIR) {
-//          git branch: PROJ_BRANCH, changelog: false, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}.git"
+          //          git branch: PROJ_BRANCH, changelog: false, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}.git"
 
           if (params.RELEASE_VERSION == 'auto') {
-            if (REPO_NAME == 'zanata-platform') {
-              releaseVersion = readMavenPom(file: "${WORK_DIR}/parent/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
-            } else {
-              releaseVersion = readMavenPom(file: "${WORK_DIR}/pom.xml").getVersion().replaceAll('-SNAPSHOT', '')
-            }
+            releaseVersion = readMavenPom(file: versionPomXml).getVersion().replaceAll('-SNAPSHOT', '')
           } else {
             releaseVersion = params.RELEASE_VERSION
           }
@@ -146,34 +183,18 @@ timestamps {
       }
     }
 
-    def envArray = new ArrayList()
-    envArray.addAll(
-      sh( returnStdout: true,
-        script: "sed -rn -e '/[A-Z_]*=/ s/^[^A-Z_]*([A-Z_]*=[^}]*)/\\1/p' $WORKSPACE/zanata-env.sh",
-      )?.split("\n")
-    )
-
-    envArray.addAll([
-      "WORK_ROOT=${WORK_ROOT}",
-      "ZANATA_RELEASE_MODE=${params.ZANATA_RELEASE_MODE}",
-    ])
-
-    if (params.ZANATA_RELEASE_MODE == 'dryRun') {
-      envArray.add("DryRunMode=1")
-    }
-
     withEnv(envArray) {
       String developmentVersion = null
       String tagName = null
 
       dir (WORK_DIR) {
-        if (REPO_NAME == 'zanata-platform'){
+        if (hasReleaseNotes){
           stage('ReleaseNotes') {
             notify.startBuilding()
             String releaseNoteVersion = releaseVersion.replaceAll(/[-.]/, '')
             echo "releaseNoteVersion: $releaseNoteVersion"
             def releaseNoteStatus = sh(returnStatus: true,
-              script: "bash $WORKSPACE/zanata-release-notes-prepend -j $artifactId $releaseNoteVersion",
+              script: "bash $WORKSPACE/zanata-release-notes-prepend -j $artifactId $releaseVersion",
             )
             echo "releaseNoteStatus: $releaseNoteStatus"
             switch(releaseNoteStatus) {
@@ -192,7 +213,7 @@ timestamps {
 
         stage('SetReleaseVersion') {
           sh(returnStatus: true,
-            script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $releaseVersion $PLATFORM_MAVEN_VERSION_PROJECT",
+            script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $releaseVersion $setPomVersionProjects",
           )
         }
         // We cannot use org.sonatype.plugins:nexus-staging-maven-plugin:1.6.8:deploy here
@@ -202,14 +223,14 @@ timestamps {
         //  sh "bash $WORKSPACE/zanata-nexus $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
         //}
         stage('NexusStaging') {
-          sh "bash $WORKSPACE/zanata-nexus-staging $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
+          sh "bash $WORKSPACE/zanata-nexus-staging $nexusStagingProjects"
         }
         stage('NexusRelease') {
-          sh "bash $WORKSPACE/zanata-nexus-release -p $PLATFORM_MAVEN_NEXUS_RELEASE_PROJECTS"
+          sh "bash $WORKSPACE/zanata-nexus-release -p $nexusStagingProjects"
         }
         stage('SetSnapshotVersion') {
           sh(returnStatus: true,
-            script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $developmentVersion $PLATFORM_MAVEN_VERSION_PROJECT",
+            script: "bash $WORKSPACE/zanata-pom-set-version ${artifactId}- $developmentVersion $setPomVersionProjects"
           )
           withCredentials([
             [$class: 'UsernamePasswordMultiBinding',

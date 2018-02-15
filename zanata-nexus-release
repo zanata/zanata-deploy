@@ -70,11 +70,12 @@ export DryRunMode
 
 Projects="${1-}"
 
-if [[ -n $Projects ]]; then
+if [[ -n $Projects && $Projects != 'null' ]]; then
     ProjectOpts="-pl $Projects"
 else
     ProjectOpts=""
 fi
+
 
 
 ## This function runs the staging plugin to fetch the repository id and state into these variables:
