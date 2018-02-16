@@ -22,7 +22,7 @@ timestamps {
     String PROJ_BASE = (env.PROJ_BASE) ?: "${ORG_BASE}/${REPO_NAME}"
     String PROJ_BRANCH = (env.PROJ_BRANCH) ?: 'release'
     String ZANATA_SCRIPTS_BRANCH = (env.ZANATA_SCRIPTS_BRANCH) ?: 'master'
-    String WORK_ROOT = (env.WORK_ROOT) ?: "/home/jenkins/zanata-work-root"
+    String WORK_ROOT = (env.WORK_ROOT) ?: "${env.JENKINS_HOME}/zanata-work-root"
     String WORK_DIR = "${WORK_ROOT}/${REPO_NAME}"
 
     def envArray = new ArrayList()
@@ -115,12 +115,17 @@ timestamps {
           versionPomXml = "${WORK_DIR}/parent/pom.xml"
           hasReleaseNotes = true
         }
-
-        sh("bash $WORKSPACE/zanata-functions run ensure_repo ${REPO_NAME}")
-        sh("bash $WORKSPACE/zanata-functions run checkout_branch ${REPO_NAME} ${PROJ_BRANCH} ${WORK_ROOT}")
+        // sh("bash $WORKSPACE/zanata-functions run ensure_repo ${REPO_NAME}")
+        // sh("bash $WORKSPACE/zanata-functions run checkout_branch ${REPO_NAME} ${PROJ_BRANCH} ${WORK_ROOT}")
         dir(WORK_DIR) {
           //          git branch: PROJ_BRANCH, changelog: false, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}.git"
 
+          checkout changelog: false, poll: false, scm:
+            [$class: 'GitSCM', branches: [[name: "*/release"]],
+              doGenerateSubmoduleConfigurations: false,
+              extensions: [], submoduleCfg: [],
+              userRemoteConfigs: [[credentialsId: 'zanata-jenkins', url: "http://${ORG_BASE}/${REPO_NAME}"]]
+            ]
           if (params.RELEASE_VERSION == 'auto') {
             releaseVersion = readMavenPom(file: versionPomXml).getVersion().replaceAll('-SNAPSHOT', '')
           } else {
