@@ -22,7 +22,7 @@ timestamps {
     String PROJ_BASE = (env.PROJ_BASE) ?: "${ORG_BASE}/${REPO_NAME}"
     String PROJ_BRANCH = (env.PROJ_BRANCH) ?: 'release'
     String ZANATA_SCRIPTS_BRANCH = (env.ZANATA_SCRIPTS_BRANCH) ?: 'master'
-    String WORK_ROOT = (env.WORK_ROOT) ?: "${env.JENKINS_HOME}/zanata-work-root"
+    String WORK_ROOT = (env.WORK_ROOT) ?: "${env.WORKSPACE}/zanata-work-root"
     String WORK_DIR = "${WORK_ROOT}/${REPO_NAME}"
 
     def envArray = new ArrayList()
@@ -121,7 +121,7 @@ timestamps {
           //          git branch: PROJ_BRANCH, changelog: false, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}.git"
 
           checkout changelog: false, poll: false, scm:
-            [$class: 'GitSCM', branches: [[name: "*/release"]],
+            [$class: 'GitSCM', branches: [[name: "*/${PROJ_BRANCH}"]],
               doGenerateSubmoduleConfigurations: false,
               extensions: [], submoduleCfg: [],
               userRemoteConfigs: [[credentialsId: 'zanata-jenkins', url: "http://${ORG_BASE}/${REPO_NAME}"]]
