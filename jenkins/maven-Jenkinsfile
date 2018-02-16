@@ -51,9 +51,10 @@ timestamps {
         [
           $class: 'BuildDiscarderProperty',
           strategy: [$class: 'LogRotator',
-            numToKeepStr: '20',        // keep records for at most X builds
-            artifactDaysToKeepStr: '', // keep artifacts no more than X days
-            artifactNumToKeepStr: '10', // keep artifacts for at most X builds
+            daysToKeepStr: '180', // keep records no more than X days
+            numToKeepStr: '',        // keep records for at most X builds
+            artifactDaysToKeepStr: '180', // keep artifacts no more than X days
+            artifactNumToKeepStr: '', // keep artifacts for at most X builds
           ]
         ],
         [$class: 'GithubProjectProperty',
