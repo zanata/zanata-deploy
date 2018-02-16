@@ -6,28 +6,10 @@
 @Field
 public static final String ORG_BASE = 'github.com/zanata'
 
-@Field
-public static final String PIPELINE_LIBRARY_BRANCH = 'v0.3.1'
-
 @Library('github.com/zanata/zanata-pipeline-library@v0.3.1')
-import org.zanata.jenkins.Notifier
-import org.zanata.jenkins.PullRequests
-import org.zanata.jenkins.ScmGit
 import static org.zanata.jenkins.StackTraces.getStackTrace
 
 import groovy.transform.Field
-
-@Field
-def pipelineLibraryScmGit
-
-@Field
-def zanataScriptScmGit
-
-@Field
-def mainScmGit
-
-@Field
-def notify
 
 timestamps {
 // We need a node with release label
@@ -64,15 +46,6 @@ timestamps {
 
 
     ansiColor('xterm') {
-      pipelineLibraryScmGit = new ScmGit(env, steps, "https://${ORG_BASE}/zanata-pipeline-library")
-      pipelineLibraryScmGit.init(PIPELINE_LIBRARY_BRANCH)
-      zanataScriptsScmGit = new ScmGit(env, steps, "https://${ORG_BASE}/zanata-scripts")
-      zanataScriptsScmGit.init(ZANATA_SCRIPTS_BRANCH)
-      mainScmGit = new ScmGit(env, steps, "https://${PROJ_BASE}")
-      mainScmGit.init(PROJ_BRANCH)
-      notify = new Notifier(env, steps, currentBuild,
-          pipelineLibraryScmGit, mainScmGit, 'maven-Jenkinsfile',
-      )
 
       def projectProperties = [
         [
@@ -111,8 +84,6 @@ timestamps {
     }
 
     stage('Checkout') {
-      notify.started()
-
       // This checkout zanata-scripts
       checkout scm
 
@@ -190,7 +161,6 @@ timestamps {
       dir (WORK_DIR) {
         if (hasReleaseNotes){
           stage('ReleaseNotes') {
-            notify.startBuilding()
             String releaseNoteVersion = releaseVersion.replaceAll(/[-.]/, '')
             echo "releaseNoteVersion: $releaseNoteVersion"
             def releaseNoteStatus = sh(returnStatus: true,
