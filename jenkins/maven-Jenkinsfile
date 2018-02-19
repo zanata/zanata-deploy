@@ -199,7 +199,7 @@ timestamps {
           sh "bash $WORKSPACE/zanata-nexus-staging $nexusStagingProjects"
         }
         stage('NexusRelease') {
-	  // Release nexus staging repo and push the git tag
+          // Release nexus staging repo and push the git tag
           sh "bash $WORKSPACE/zanata-nexus-release -p $nexusStagingProjects"
         }
         stage('SetSnapshotVersion') {
