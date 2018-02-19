@@ -16,8 +16,8 @@ timestamps {
   node('release') {
     currentBuild.displayName = currentBuild.displayName + " {${env.NODE_NAME}}"
 
-    // To override following variables, use
-    // "Properties Content" in "Prepare an environment for the run" in Jenkins Web UI
+    // To override the following variables, configure the pipeline job configuration in Jenkins,
+    // enable "Prepare an environment for the run", then fill in KEY=VALUE in "Properties Content"
     String REPO_NAME = (env.REPO_NAME) ?: 'zanata-platform'
     String PROJ_BASE = (env.PROJ_BASE) ?: "${ORG_BASE}/${REPO_NAME}"
     String PROJ_BRANCH = (env.PROJ_BRANCH) ?: 'release'
@@ -51,7 +51,7 @@ timestamps {
         [
           $class: 'BuildDiscarderProperty',
           strategy: [$class: 'LogRotator',
-            daysToKeepStr: '180', // keep records no more than X days
+            daysToKeepStr: '731', // keep records no more than X days
             numToKeepStr: '',        // keep records for at most X builds
             artifactDaysToKeepStr: '180', // keep artifacts no more than X days
             artifactNumToKeepStr: '', // keep artifacts for at most X builds
@@ -116,10 +116,7 @@ timestamps {
           versionPomXml = "${WORK_DIR}/parent/pom.xml"
           hasReleaseNotes = true
         }
-        // sh("bash $WORKSPACE/zanata-functions run ensure_repo ${REPO_NAME}")
-        // sh("bash $WORKSPACE/zanata-functions run checkout_branch ${REPO_NAME} ${PROJ_BRANCH} ${WORK_ROOT}")
         dir(WORK_DIR) {
-          //          git branch: PROJ_BRANCH, changelog: false, credentialsId: 'zanata-jenkins', poll: false, url: "https://${PROJ_BASE}.git"
 
           checkout changelog: false, poll: false, scm:
             [$class: 'GitSCM', branches: [[name: "*/${PROJ_BRANCH}"]],
@@ -202,6 +199,7 @@ timestamps {
           sh "bash $WORKSPACE/zanata-nexus-staging $nexusStagingProjects"
         }
         stage('NexusRelease') {
+	  // Release nexus staging repo and push the git tag
           sh "bash $WORKSPACE/zanata-nexus-release -p $nexusStagingProjects"
         }
         stage('SetSnapshotVersion') {
@@ -215,7 +213,7 @@ timestamps {
             ]
           ]) {
             if ( params.ZANATA_RELEASE_MODE == '') {
-              sh "git push https://$GIT_USERNAME:$GITHUB_OAUTH2_TOKEN@${PROJ_BASE} release"
+              sh "git push https://$GIT_USERNAME:$GITHUB_OAUTH2_TOKEN@${PROJ_BASE} ${PROJ_BRANCH}"
             }
           }
         }
