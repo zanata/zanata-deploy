@@ -47,9 +47,6 @@ timestamps {
     //  e.g. orgzanata
     String nexusStagingRepositoryPrefix = 'orgzanata'
 
-    boolean hasReleaseNotes = false
-
-
     ansiColor('xterm') {
 
       def projectProperties = [
@@ -94,7 +91,7 @@ timestamps {
       checkout scm
 
       artifactId = sh(returnStdout: true,
-          script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}"
+        script: "bash $WORKSPACE/zanata-functions run get_artifact_id ${REPO_NAME}"
       ).trim()
 
       envArray.addAll(
@@ -162,7 +159,10 @@ timestamps {
 
     withEnv(envArray) {
       dir (WORK_DIR) {
-        if (hasReleaseNotes){
+        String releaseNotesFile=sh(returnStdout: true,
+          script: "bash $WORKSPACE/zanata-functions run get_artifact_var_value ${artifactId} release_notes_file"
+        ).trim()
+        if (releaseNotesFile){
           stage('ReleaseNotes') {
             String releaseNoteVersion = releaseVersion.replaceAll(/[-.]/, '')
             echo "releaseNoteVersion: $releaseNoteVersion"
@@ -197,11 +197,18 @@ timestamps {
         }
         stage('NexusRelease') {
           // Release nexus staging repo and push the git tag
-          sh "bash $WORKSPACE/zanata-nexus-release -p"
+          withCredentials([
+            [$class: 'UsernamePasswordMultiBinding',
+            credentialsId: 'zanata-jenkins',
+            usernameVariable: 'GIT_USERNAME', passwordVariable: 'GITHUB_OAUTH2_TOKEN'
+            ]
+          ]) {
+            sh "bash $WORKSPACE/zanata-nexus-release -p -r https://$GIT_USERNAME:$GITHUB_OAUTH2_TOKEN@${PROJ_BASE} ${PROJ_BRANCH}"
+          }
         }
         stage('SetSnapshotVersion') {
           sh(returnStatus: true,
-            script: "bash $WORKSPACE/zanata-pom-set-version $developmentVersion "
+            script: "bash $WORKSPACE/zanata-pom-set-version $developmentVersion"
           )
           withCredentials([
             [$class: 'UsernamePasswordMultiBinding',
