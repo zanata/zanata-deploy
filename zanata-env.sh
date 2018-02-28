@@ -118,7 +118,7 @@ PLATFORM_STAGING_REPOSITORY="orgzanata"
 PLATFORM_RELEASE_NOTES_FILE="docs/release-notes.md"
 
 ## jgettext
-JGETTEXT_STAGING_REPOSITORY="orgfedorahostedjgettext"
+JGETTEXT_STAGING_REPOSITORY="orgfedorahostedtennera"
 JGETTEXT_MAVEN_RELEASE_PROFILES="release"
 
 ## openprops

@@ -32,6 +32,18 @@ FunctionScriptFile=${ScriptDir}/zanata-functions
 source "$FunctionScriptFile"
 trap exit_print_error EXIT
 
+RepoName=$(repo_name_get)
+ArtifactId=$(get_artifact_id $RepoName)
+
+MavenReleaseProfiles=$(get_artifact_var_value $ArtifactId maven_release_profiles)
+
+## List all artifacts to be released in sonatype nexus
+## e.g. !server/zanata-test-war,!server/functional-test
+NexusReleaseProjects=$(get_artifact_var_value $ArtifactId maven_nexus_release_project)
+
+## default variables
+Projects=$NexusReleaseProjects
+
 ###
 ### OPTIONS
 while getopts "h" opt;do
@@ -48,14 +60,12 @@ while getopts "h" opt;do
 done
 shift $((OPTIND-1))
 
-Projects="${1-}"
-
+[[ -n ${1:-} ]] && Projects="$1"
 if [[ -n $Projects && $Projects != 'null' ]]; then
     ProjectOpts="-pl $Projects"
 else
     ProjectOpts=""
 fi
-
 
 if [[ $ZANATA_RELEASE_MODE == testBuild ]]; then
     Goal=verify
@@ -63,4 +73,10 @@ else
     Goal=deploy
 fi
 
-run_command ./mvnw ${MAVEN_COMMON_OPTIONS:-} ${MAVEN_RELEASE_OPTIONS:-} $ProjectOpts $Goal
+if [[ -n $MavenReleaseProfiles ]]; then
+    ReleaseProfileOpts=-P$MavenReleaseProfiles
+else
+    ReleaseProfileOpts=
+fi
+
+run_command ./mvnw ${MAVEN_COMMON_OPTIONS:-} ${MAVEN_RELEASE_OPTIONS:-} $ReleaseProfileOpts $ProjectOpts $Goal
