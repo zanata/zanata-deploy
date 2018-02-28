@@ -704,6 +704,29 @@ function print_status(){
     ZnatNoEOL=$optionN
 }
 
+###
+### repo_name_get
+###     In current directory, get the GitHub RepoName.
+###     e.g. 'zanata-platform', 'openprops'
+###     This function also set environment
+###     Print: repo_name
+###     Returns:
+###         EXIT_OK: Successfully gets RepoName 
+###         EXIT_FATAL_GIT_FAILED: Failed in git, usually indicated current directory 
+repo_name_get(){
+    ## url variable definition need to be separated with assignment,
+    ## otherwise exitCode will be 0 even when failed.
+    local url
+    set +e
+    url=$(git config --get remote.origin.url)
+    local exitCode=$?
+    set -e
+    [[ $exitCode -eq 0 ]] || failed $EXIT_FATAL_GIT_FAILED "[repo_name_get] Failed in git, wrong directory perhaps"
+
+    sed -nr -e 's|^.*/([A-Za-z0-9-]*)(.git)?$|\1|p' <<<"$url"
+}
+
+##
 ## run_command <command> [args ... ]
 ##     On Dry-run mode, just show the command,
 ##     otherwise run the command.
