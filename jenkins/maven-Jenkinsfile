@@ -203,7 +203,7 @@ timestamps {
             usernameVariable: 'GIT_USERNAME', passwordVariable: 'GITHUB_OAUTH2_TOKEN'
             ]
           ]) {
-            sh "bash $WORKSPACE/zanata-nexus-release -p -r https://$GIT_USERNAME:$GITHUB_OAUTH2_TOKEN@${PROJ_BASE} ${PROJ_BRANCH}"
+            sh "bash $WORKSPACE/zanata-nexus-release -p -r https://$GIT_USERNAME:$GITHUB_OAUTH2_TOKEN@${PROJ_BASE}"
           }
         }
         stage('SetSnapshotVersion') {

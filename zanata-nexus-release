@@ -138,8 +138,10 @@ get_StagingRepository(){
     local StagingRepositoryBuffer=$(run_maven rc-list -pl . | sed -r -n -e '/'$NexusStagingRepositoryPrefix'-.* / s/^\[INFO\] ('$NexusStagingRepositoryPrefix'-[0-9]+)\s*([A-Z]+)/\1 \2/ p'  )
     if [[ $DryRunMode -eq 0 ]]; then
         if [[ -n $StagingRepositoryBuffer ]]; then
-            StagingRepositoryId=$( awk '{print $1}' <<<"$StagingRepositoryBuffer" | tail -n 1 )
-            StagingRepositoryState=$( awk '{print $2}' <<<"$StagingRepositoryBuffer" | tail -n 1 )
+            ## Pick the latest Nexus staging
+            local stagingRepositoryLine=$( awk '{print $1,$2}' <<<"$StagingRepositoryBuffer" | sort -rV | head -n 1)
+            StagingRepositoryId=$( awk '{print $1}' <<<"$stagingRepositoryLine" )
+            StagingRepositoryState=$( awk '{print $2}' <<<"$stagingRepositoryLine" )
         elif [[ $ZANATA_RELEASE_MODE = testBuild ]]; then
             print_status " [testBuild] StagingRepositoryId is not necessary available"
             StagingRepositoryId=StagingRepositoryId
@@ -154,6 +156,7 @@ get_StagingRepository(){
         StagingRepositoryId=StagingRepositoryId
         StagingRepositoryState=OPEN
     fi
+    print_status " StagingRepositoryId=$StagingRepositoryId  StagingRepositoryState=$StagingRepositoryState"
 }
 
 print_status -t nexus-release -s "Start"
