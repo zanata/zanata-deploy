@@ -642,7 +642,7 @@ function gav_to_maven_artifact_file(){
 ###         If the commit is not detached, then no-op.
 git_detached_merge_branch(){
     local branch=$1
-    local commitSha=$(git rev-parse)
+    local commitSha=$(git rev-parse HEAD)
     local tmpBranch="br-$commitSha"
     if [[ $(branch_get_current) = HEAD ]]; then
         git branch $tmpBranch $commitSha
