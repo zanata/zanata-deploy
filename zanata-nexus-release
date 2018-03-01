@@ -36,6 +36,7 @@ print_status -t parsing -s "Start"
 
 RepoName=$(repo_name_get)
 ArtifactId=$(get_artifact_id $RepoName)
+Version=$(./mvnw -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:exec)
 
 MavenReleaseProfiles=$(get_artifact_var_value $ArtifactId maven_release_profiles)
 
@@ -126,7 +127,7 @@ fi
 run_maven(){
     local goal=$1
     shift
-    run_command ./mvnw $MAVEN_COMMON_OPTIONS ${MAVEN_NEXUS_STAGING_OPTIONS:-} $ReleaseProfileOpts ${MAVEN_NEXUS_STAGING_PLUGIN}:$goal "$@"
+    run_command ./mvnw $MAVEN_COMMON_OPTIONS ${MAVEN_NEXUS_STAGING_OPTIONS:-}  $ReleaseProfileOpts -DstagingDescription="$ArtifactId:$Version" ${MAVEN_NEXUS_STAGING_PLUGIN}:$goal "$@"
 }
 
 ## This function runs the staging plugin to fetch the repository id and state into these variables:
