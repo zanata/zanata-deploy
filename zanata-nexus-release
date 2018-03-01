@@ -177,6 +177,7 @@ if [ "$StagingRepositoryState" = "OPEN" ];then
     if [[ $ExitCode -eq 0 ]]; then
         if [[ $PushMode -eq 1 ]]; then
             ## Push when success
+            git_detached_merge_branch $PushBranch
             run_command git push --follow-tags "$PushRepository" $PushBranch
         fi
     fi

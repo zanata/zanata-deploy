@@ -637,6 +637,22 @@ function gav_to_maven_artifact_file(){
 }
 
 ###
+###     git_detached_merge_branch <branch>
+###         Merge a detached commit to branch.
+###         If the commit is not detached, then no-op.
+git_detached_merge_branch(){
+    local branch=$1
+    local commitSha=$(git rev-parse)
+    local tmpBranch="br-$commitSha"
+    if [[ $(branch_get_current) = HEAD ]]; then
+        git branch $tmpBranch $commitSha
+        git checkout $branch
+        git merge $tmpBranch
+        git branch -D $tmpBranch  
+    fi
+}
+
+###
 ###     print_status [-n] [-q] [-s] [-t <Stage>] [message]
 ###         Print the status message.
 ###         Options:
@@ -730,15 +746,17 @@ repo_name_get(){
 ## run_command <command> [args ... ]
 ##     On Dry-run mode, just show the command,
 ##     otherwise run the command.
-function run_command(){
+run_command(){
+    local xtrace=0
     if [[ ${DryRunMode:-} -eq 1 ]];then
         print_status " [Dry-Run] $*"
         ExitCode=$EXIT_OK
     else
-        set -x
+        [[ $- = *x* ]] && xtrace=1
+        [[ $xtrace -eq 0 ]] && set -x
         "$@"
         ExitCode=$?
-        set +x
+        [[ $xtrace -eq 0 ]] && set +x
     fi
 }
 

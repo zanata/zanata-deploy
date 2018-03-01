@@ -210,6 +210,8 @@ timestamps {
           sh(returnStatus: true,
             script: "bash $WORKSPACE/zanata-pom-set-version $developmentVersion"
           )
+	  sh "bash $WORKSPACE/zanata-functions run git_detached_merge_branch ${PROJ_BRANCH}"
+
           withCredentials([
             [$class: 'UsernamePasswordMultiBinding',
               credentialsId: 'zanata-jenkins',
