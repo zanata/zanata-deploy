@@ -797,6 +797,16 @@ function version_next(){
     echo "$prefix$delimiter$last"
 }
 
+
+## Find maven command
+if [[ -x ./mvnw ]]; then
+    export MvnCmd=$PWD/mvnw
+else
+    set +e
+    MvnCmd=$(which mvn 2>& /dev/null)
+    set -e
+fi
+
 ## Find zanata-env.sh
 case $(basename $0) in
     bash )
