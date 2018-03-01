@@ -34,7 +34,7 @@ trap exit_print_error EXIT
 
 RepoName=$(repo_name_get)
 ArtifactId=$(get_artifact_id $RepoName)
-Version=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:exec)
+Version=$(./mvnw -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:exec)
 
 MavenReleaseProfiles=$(get_artifact_var_value $ArtifactId maven_release_profiles)
 
