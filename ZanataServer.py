@@ -82,15 +82,20 @@ class ZanataServer(SshHost):
             scp_dest_dir='/usr/local/share/applications'):
         # type (str, bool, str) -> None
         """scp WAR file to server"""
-        scp_dest_war = "%s/zanata.war" % scp_dest_dir
-        self.scp_to_host(war_file, scp_dest_war, sudo=True, rm_old=rm_old)
-        self.run_chown(self.jboss_user, self.jboss_group, scp_dest_war)
+        dest_war = "%s/zanata.war" % scp_dest_dir
+        tmp_dest_war = dest_war + '.tmp'
+
+        self.scp_to_host(
+                war_file, tmp_dest_war, sudo=True, rm_old=rm_old)
+        self.run_chown(self.jboss_user, self.jboss_group, tmp_dest_war)
 
         # Link war file to dest
-        deploy_war_file = "%s/zanata.war" % self.deploy_dir
         self.run_check_call("systemctl stop eap7-standalone", True)
+        # mv to dest_war after eap7 is stopped
+        self.run_check_call("mv %s %s" % tmp_dest_war, dest_war, True)
+        deploy_war_file = "%s/zanata.war" % self.deploy_dir
         self.run_check_call(
-                "ln -sf %s %s" % (scp_dest_war, deploy_war_file), True)
+                "ln -sf %s %s" % (dest_war, deploy_war_file), True)
         self.run_chown(self.jboss_user, self.jboss_group, deploy_war_file)
         self.run_check_call("systemctl start eap7-standalone", True)
 
