@@ -193,6 +193,7 @@ class UrlHelper(object):
             os.makedirs(target_dir)
         except OSError as exc:
             if exc.errno == errno.EEXIST and os.path.isdir(target_dir):
+                # Dir already exists
                 pass
             else:
                 raise

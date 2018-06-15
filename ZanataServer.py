@@ -46,9 +46,17 @@ class ZanataServer(SshHost):
             arg_parser = JenkinsJob.add_parser(arg_parser, True)
 
         arg_parser.add_sub_command(
-                'deploy-last-successful-war',
+                'deploy-war-file',
+                {
+                        'war_file': {
+                                'type': str,
+                                'help': 'WAR file'}
+                        },
+                help=cls.deploy_war_file.__doc__)
+        arg_parser.add_sub_command(
+                'deploy-from-jenkins-last-successful',
                 None,
-                help='Deploy last successful war from jenkins')
+                help=cls.deploy_from_jenkins_last_successful.__doc__)
         return arg_parser
 
     @staticmethod
@@ -69,20 +77,16 @@ class ZanataServer(SshHost):
                 download_dir)
         return download_dir + '/' + os.path.basename(war_file_list[0])
 
-    def scp_war_to_server(
+    def deploy_war_file(
             self, war_file, rm_old=True,
             scp_dest_dir='/usr/local/share/applications'):
-        # type (str, bool, str) -> str
+        # type (str, bool, str) -> None
         """scp WAR file to server"""
         scp_dest_war = "%s/zanata.war" % scp_dest_dir
         self.scp_to_host(war_file, scp_dest_war, sudo=True, rm_old=rm_old)
         self.run_chown(self.jboss_user, self.jboss_group, scp_dest_war)
-        return scp_dest_war
 
-    def link_war_to_deploy_dir(self, scp_dest_war):
-        # type (str) -> None
-        """Stop eap, Link to War file, then Start eap"""
-        logging.debug("link_war_to_deploy_dir(%s)", scp_dest_war)
+        # Link war file to dest
         deploy_war_file = "%s/zanata.war" % self.deploy_dir
         self.run_check_call("systemctl stop eap7-standalone", True)
         self.run_check_call(
@@ -90,30 +94,33 @@ class ZanataServer(SshHost):
         self.run_chown(self.jboss_user, self.jboss_group, deploy_war_file)
         self.run_check_call("systemctl start eap7-standalone", True)
 
-    def deploy_last_successful_war(
+        logging.info("Done")
+
+    def deploy_from_jenkins_last_successful(
             self, jenkins_server,
             branch='master',
             folder='github-zanata-org', rm_old=True):
         # type () -> None
-        """Deploy the last successful war from jenkins"""
+        """Download from last successful WAR file from jenkins, then deploy"""
         downloaded_war = ZanataServer.download_last_successful_war(
                 jenkins_server, branch, folder)
-        scp_dest_war = self.scp_war_to_server(downloaded_war, rm_old)
-        self.link_war_to_deploy_dir(scp_dest_war)
-        logging.info("Done")
+        self.deploy_war_file(downloaded_war, rm_old)
 
 
 def run_sub_command(args):
     # type (dict) -> None
     """Run the sub command"""
     z_server = ZanataServer.init_from_parsed_args(args)
-    if args.sub_command == 'deploy_last_successful_war':
+
+    if args.sub_command == 'deploy_war_file':
+        z_server.deploy_war_file(args.war_file)
+    elif args.sub_command == 'deploy_from_jenkins_last_successful':
         jenkins_server = JenkinsServer.init_from_parsed_args(args)
         kwargs = {}
         for key in ['branch', 'folder']:
             if hasattr(args, key) and getattr(args, key):
                 kwargs[key] = getattr(args, key)
-        z_server.deploy_last_successful_war(
+        z_server.deploy_from_jenkins_last_successful(
                 jenkins_server, **kwargs)
 
 

@@ -42,12 +42,11 @@ class ZanataArgParser(ArgumentParser):
                     help='Command help')
         sub_command_name = re.sub('-', '_', name)
 
-        if self.parent_parser:
-            # common argument aleady defined
-            if 'parents' in kwargs:
-                kwargs['parents'] += [self.parent_parser]
-            else:
-                kwargs['parents'] = [self.parent_parser]
+        if 'parents' in kwargs:
+            kwargs['parents'] += [self.parent_parser]
+        else:
+            kwargs['parents'] = [self.parent_parser]
+
         anonymous_parser = self.sub_parsers.add_parser(
                 name, **kwargs)
         if arguments:
