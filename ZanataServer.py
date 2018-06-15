@@ -41,9 +41,6 @@ class ZanataServer(SshHost):
         if not arg_parser:
             arg_parser = ZanataArgParser(description=__doc__)
         arg_parser = super(ZanataServer, cls).add_parser(arg_parser)
-        # Include JenkinsJob parser for we need to download from jenkins
-        if not arg_parser.has_common_argument(dest='branch'):
-            arg_parser = JenkinsJob.add_parser(arg_parser, True)
 
         arg_parser.add_sub_command(
                 'deploy-war-file',
@@ -53,6 +50,10 @@ class ZanataServer(SshHost):
                                 'help': 'WAR file'}
                         },
                 help=cls.deploy_war_file.__doc__)
+
+        # Include JenkinsJob parser for following sub command
+        if not arg_parser.has_common_argument(dest='branch'):
+            arg_parser = JenkinsJob.add_parser(arg_parser, True)
         arg_parser.add_sub_command(
                 'deploy-from-jenkins-last-successful',
                 None,
