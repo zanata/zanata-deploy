@@ -40,16 +40,22 @@ class JenkinsServer(object):
         self.token = token
 
     @classmethod
-    def add_parser(cls, arg_parser=None):
+    def add_parser(cls, arg_parser=None, env_sub_commands=None):
         # type: (ZanataArgParser) -> ZanataArgParser
         """Add JenkinsServer parameters to a parser"""
         if not arg_parser:
             arg_parser = ZanataArgParser(description=__doc__)
 
         # Add env
-        arg_parser.add_env('JENKINS_URL', dest='server_url', required=True)
-        arg_parser.add_env('ZANATA_JENKINS_USER', dest='user', required=True)
-        arg_parser.add_env('ZANATA_JENKINS_TOKEN', dest='token', required=True)
+        arg_parser.add_env(
+                'JENKINS_URL', dest='server_url', required=True,
+                sub_commands=env_sub_commands)
+        arg_parser.add_env(
+                'ZANATA_JENKINS_USER', dest='user', required=True,
+                sub_commands=env_sub_commands)
+        arg_parser.add_env(
+                'ZANATA_JENKINS_TOKEN', dest='token', required=True,
+                sub_commands=env_sub_commands)
         return arg_parser
 
     @classmethod
@@ -121,13 +127,16 @@ class JenkinsJob(object):
         self.url = "%s%s" % (self.server.server_url, job_path)
 
     @classmethod
-    def add_parser(cls, arg_parser=None, only_options=False):
+    def add_parser(
+            cls, arg_parser=None,
+            only_options=False, env_sub_commands=None):
         # type: (ZanataArgParser, bool) -> ZanataArgParser
         """Add JenkinsJob parameters to parser
         arg_parser: existing parser to be appended to
         only_options: Add only options and JenkinsServer env"""
         if not arg_parser or not arg_parser.has_env('JENKINS_URL'):
-            arg_parser = JenkinsServer.add_parser(arg_parser)
+            arg_parser = JenkinsServer.add_parser(
+                    arg_parser, env_sub_commands)
         arg_parser.add_common_argument(
                 '-b', '--branch', type=str,
                 help='branch or PR name')
@@ -285,18 +294,18 @@ def run_sub_command(args):
     """Run the sub command"""
     job = JenkinsJob.init_from_parsed_args(args)
     job.load()
-    if args.sub_command == 'get_job':
+    if args.sub_command == 'get-job':
         print(job)
-    elif args.sub_command == 'get_last_successful_build':
+    elif args.sub_command == 'get-last-successful-build':
         build = job.get_last_successful_build()
         build.load()
         print(build)
-    elif args.sub_command == 'get_last_successful_artifacts':
+    elif args.sub_command == 'get-last-successful-artifacts':
         print('\n'.join(
                 job.get_last_successful_artifacts(
                         args.artifact_path_patterns.split(','))
                 ))
-    elif args.sub_command == 'download_last_successful_artifacts':
+    elif args.sub_command == 'download-last-successful-artifacts':
         artifact_path_list = job.download_last_successful_artifacts(
                 args.artifact_path_patterns.split(','),
                 args.download_dir)

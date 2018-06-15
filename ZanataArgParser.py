@@ -40,7 +40,6 @@ class ZanataArgParser(ArgumentParser):
             self.sub_parsers = self.add_subparsers(
                     title='Command', description='Valid commands',
                     help='Command help')
-        sub_command_name = re.sub('-', '_', name)
 
         if 'parents' in kwargs:
             kwargs['parents'] += [self.parent_parser]
@@ -52,7 +51,7 @@ class ZanataArgParser(ArgumentParser):
         if arguments:
             for k, v in arguments.iteritems():
                 anonymous_parser.add_argument(*k.split(), **v)
-        anonymous_parser.set_defaults(sub_command=sub_command_name)
+        anonymous_parser.set_defaults(sub_command=name)
         return anonymous_parser
 
     def add_env(  # pylint: disable=too-many-arguments
@@ -60,8 +59,9 @@ class ZanataArgParser(ArgumentParser):
             default=None,
             required=False,
             value_type=str,
-            dest=''):
-        # type: (str, object, bool, type) -> None
+            dest=None,
+            sub_commands=None):
+        # type: (str, object, bool, type, str, List[str]) -> None
         """Add environment variable"""
         if not dest:
             dest = env_name.lower()
@@ -72,7 +72,8 @@ class ZanataArgParser(ArgumentParser):
                 'default': default,
                 'required': required,
                 'value_type': value_type,
-                'dest': dest}
+                'dest': dest,
+                'sub_commands': sub_commands}
 
     def has_common_argument(self, option_string=None, dest=None):
         # type: (str, str) -> bool
@@ -114,12 +115,35 @@ class ZanataArgParser(ArgumentParser):
         delattr(result, 'verbose')
         return result
 
-    def parse_env(self):
-        # type: () -> dict
+    def _is_env_valid(self, env_name, env_value, env_data, args):
+        # type (str, str, dict, argparse.Namespace) -> bool
+        """The invalid env should be skipped or raise error"""
+        # Skip when the env is NOT in the list of supported sub-commands
+        if env_data['sub_commands'] and args and hasattr(args, 'sub_command'):
+            if not args.sub_command in env_data['sub_commands']:
+                return False
+
+        # Check whether the env_value is valid
+        if not env_value:
+            if env_data['required']:
+                # missing required value
+                raise AssertionError("Missing environment '%s'" % env_name)
+            elif not env_data['default']:
+                # no default value
+                return False
+        return True
+
+    def parse_env(self, args=None):
+        # type: (argparse.Namespace) -> dict
         """Parse environment"""
         result = {}
         for env_name, env_data in self.env_def.iteritems():
             env_value = os.environ.get(env_name)
+            try:
+                if not self._is_env_valid(env_name, env_value, env_data, args):
+                    continue
+            except AssertionError, e:
+                raise e
             if not env_value:
                 if env_data['required']:
                     raise AssertionError("Missing environment '%s'" % env_name)
@@ -134,7 +158,7 @@ class ZanataArgParser(ArgumentParser):
         # type: (str, List, object) -> argparse.Namespace
         """Parse arguments and environment"""
         result = self.parse_args(args, namespace)
-        env_dict = self.parse_env()
+        env_dict = self.parse_env(result)
         for k, v in env_dict.iteritems():
             setattr(result, k, v)
         return result

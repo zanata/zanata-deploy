@@ -53,7 +53,8 @@ class ZanataServer(SshHost):
 
         # Include JenkinsJob parser for following sub command
         if not arg_parser.has_common_argument(dest='branch'):
-            arg_parser = JenkinsJob.add_parser(arg_parser, True)
+            arg_parser = JenkinsJob.add_parser(
+                    arg_parser, True, ['deploy-from-jenkins-last-successful'])
         arg_parser.add_sub_command(
                 'deploy-from-jenkins-last-successful',
                 None,
@@ -93,7 +94,7 @@ class ZanataServer(SshHost):
         # Link war file to dest
         self.run_check_call("systemctl stop eap7-standalone", True)
         # mv to dest_war after eap7 is stopped
-        self.run_check_call("mv %s %s" % tmp_dest_war, dest_war, True)
+        self.run_check_call("mv -f %s %s" % (tmp_dest_war, dest_war), True)
         deploy_war_file = "%s/zanata.war" % self.deploy_dir
         self.run_check_call(
                 "ln -sf %s %s" % (dest_war, deploy_war_file), True)
@@ -118,9 +119,9 @@ def run_sub_command(args):
     """Run the sub command"""
     z_server = ZanataServer.init_from_parsed_args(args)
 
-    if args.sub_command == 'deploy_war_file':
+    if args.sub_command == 'deploy-war-file':
         z_server.deploy_war_file(args.war_file)
-    elif args.sub_command == 'deploy_from_jenkins_last_successful':
+    elif args.sub_command == 'deploy-from-jenkins-last-successful':
         jenkins_server = JenkinsServer.init_from_parsed_args(args)
         kwargs = {}
         for key in ['branch', 'folder']:
