@@ -65,14 +65,14 @@ class ZanataArgParserTestCase(unittest.TestCase):
                 {
                         'branch': '',
                         'job_name': 'zanata-platform',
-                        'sub_command': 'show_job'},
+                        'sub_command': 'show-job'},
                 ['show-job', 'zanata-platform'])
         self._match_result(
                 'parse_args',
                 {
                         'branch': '', 'folder': 'github-zanata-org',
                         'job_name': 'zanata-platform',
-                        'sub_command': 'show_last_successful_build'},
+                        'sub_command': 'show-last-successful-build'},
                 [
                         'show-last-successful-build',
                         '-F', 'github-zanata-org', 'zanata-platform'])
@@ -93,7 +93,7 @@ class ZanataArgParserTestCase(unittest.TestCase):
                 {
                         'branch': 'release',
                         'job_name': 'zanata-platform',
-                        'sub_command': 'show_job',
+                        'sub_command': 'show-job',
                         'home': home,
                         'logname': log_name},
                 [

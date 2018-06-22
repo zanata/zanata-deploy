@@ -8,7 +8,6 @@ from __future__ import (
 from argparse import ArgumentParser, ArgumentError
 import logging
 import os
-import re
 
 
 class ZanataArgParser(ArgumentParser):
@@ -115,7 +114,8 @@ class ZanataArgParser(ArgumentParser):
         delattr(result, 'verbose')
         return result
 
-    def _is_env_valid(self, env_name, env_value, env_data, args):
+    @staticmethod
+    def is_env_valid(env_name, env_value, env_data, args):
         # type (str, str, dict, argparse.Namespace) -> bool
         """The invalid env should be skipped or raise error"""
         # Skip when the env is NOT in the list of supported sub-commands
@@ -140,7 +140,8 @@ class ZanataArgParser(ArgumentParser):
         for env_name, env_data in self.env_def.iteritems():
             env_value = os.environ.get(env_name)
             try:
-                if not self._is_env_valid(env_name, env_value, env_data, args):
+                if not ZanataArgParser.is_env_valid(
+                        env_name, env_value, env_data, args):
                     continue
             except AssertionError, e:
                 raise e
