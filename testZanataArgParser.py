@@ -4,17 +4,17 @@
 from __future__ import (
         absolute_import, division, print_function, unicode_literals)
 
-import StringIO
+import StringIO  # pylint: disable=E0401
 import os
 import sys
 import unittest
-import ZanataArgParser
+import ZanataArgParser  # pylint: disable=E0401
 
 
 def _convert_unicode_str(dictionary):
     """Recursively converts dictionary keys to strings"""
     if not isinstance(dictionary, dict):
-        if isinstance(dictionary, unicode):
+        if isinstance(dictionary, unicode):  # NOQA
             return str(dictionary)
         return str(dictionary)
     return dict(

@@ -19,7 +19,7 @@ except ImportError:
     sys.stderr.write("python typing module is not installed" + os.linesep)
 
 from ZanataFunctions import UrlHelper
-from ZanataArgParser import ZanataArgParser
+from ZanataArgParser import ZanataArgParser  # pylint: disable=E0401
 
 
 try:

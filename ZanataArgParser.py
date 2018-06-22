@@ -120,7 +120,7 @@ class ZanataArgParser(ArgumentParser):
         """The invalid env should be skipped or raise error"""
         # Skip when the env is NOT in the list of supported sub-commands
         if env_data['sub_commands'] and args and hasattr(args, 'sub_command'):
-            if not args.sub_command in env_data['sub_commands']:
+            if args.sub_command not in env_data['sub_commands']:
                 return False
 
         # Check whether the env_value is valid
@@ -143,7 +143,7 @@ class ZanataArgParser(ArgumentParser):
                 if not ZanataArgParser.is_env_valid(
                         env_name, env_value, env_data, args):
                     continue
-            except AssertionError, e:
+            except AssertionError, e:  # NOQA
                 raise e
             if not env_value:
                 if env_data['required']:

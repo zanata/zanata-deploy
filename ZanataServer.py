@@ -9,7 +9,7 @@ import os.path
 import sys
 
 
-from ZanataArgParser import ZanataArgParser
+from ZanataArgParser import ZanataArgParser  # pylint: disable=E0401
 from ZanataFunctions import SshHost
 from JenkinsHelper import JenkinsServer, JenkinsJob
 
@@ -64,7 +64,7 @@ class ZanataServer(SshHost):
     @staticmethod
     def download_last_successful_war(
             jenkins_server, branch,
-            folder, download_dir='/tmp'):
+            folder, download_dir='.'):
         # type (JenkinsServer, str, str) -> str
         """Dowload last successful war from jenkins"""
         logging.debug(
