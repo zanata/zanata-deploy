@@ -137,13 +137,14 @@ class ZanataArgParser(ArgumentParser):
         # type: (argparse.Namespace) -> dict
         """Parse environment"""
         result = {}
-        for env_name, env_data in self.env_def.iteritems():
+        for env_name in self.env_def:
+            env_data = self.env_def[env_name]
             env_value = os.environ.get(env_name)
             try:
                 if not ZanataArgParser.is_env_valid(
                         env_name, env_value, env_data, args):
                     continue
-            except AssertionError, e:  # NOQA
+            except AssertionError as e:
                 raise e
             if not env_value:
                 if env_data['required']:
@@ -160,6 +161,6 @@ class ZanataArgParser(ArgumentParser):
         """Parse arguments and environment"""
         result = self.parse_args(args, namespace)
         env_dict = self.parse_env(result)
-        for k, v in env_dict.iteritems():
+        for k, v in env_dict.iteritems():  # pylint: disable=no-member
             setattr(result, k, v)
         return result

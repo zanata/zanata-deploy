@@ -12,7 +12,7 @@ import subprocess  # nosec
 import sys
 import urllib2  # noqa: F401 # pylint: disable=import-error
 import urlparse  # noqa: F401 # pylint: disable=import-error
-from ZanataArgParser import ZanataArgParser
+from ZanataArgParser import ZanataArgParser  # pylint: disable=import-error
 
 try:
     from typing import List, Any  # noqa: F401 # pylint: disable=unused-import

@@ -14,7 +14,7 @@ import ZanataArgParser  # pylint: disable=E0401
 def _convert_unicode_str(dictionary):
     """Recursively converts dictionary keys to strings"""
     if not isinstance(dictionary, dict):
-        if isinstance(dictionary, unicode):  # NOQA
+        if isinstance(dictionary, unicode):    # NOQA  # pylint: disable=E0602
             return str(dictionary)
         return str(dictionary)
     return dict(
@@ -44,7 +44,7 @@ class ZanataArgParserTestCase(unittest.TestCase):
         args = getattr(self.parser, method)(param_list)
         sys.stdout = sys.__stdout__
         if stdout_pattern:
-            self.assertRegexpMatches(
+            self.assertRegexpMatches(  # pylint: disable=W1505
                     captured_output.getvalue(), stdout_pattern)
         self.assertDictEqual(
                 _convert_unicode_str(expected_args),
