@@ -61,7 +61,12 @@ class ZanataArgParser(ArgumentParser):
             dest=None,
             sub_commands=None):
         # type: (str, object, bool, type, str, List[str]) -> None
-        """Add environment variable"""
+        """Add environment variable
+            env_name: Environment variable name
+            default: Default value
+            value_type: type of value e.g. str
+            dest: attribute name to be return by parse_*
+            sub_commands: List of subcommands that use this environment"""
         if not dest:
             dest = env_name.lower()
         if env_name in self.env_def:
@@ -76,7 +81,10 @@ class ZanataArgParser(ArgumentParser):
 
     def has_common_argument(self, option_string=None, dest=None):
         # type: (str, str) -> bool
-        """Whether this parser parses this common argument"""
+        """Has the parser defined this argument as a common argument?
+           Either specify option_string or dest
+           option_string: option in command line. e.g. -i
+           dest: attribute name to be return by parse_*"""
         for action in self.parent_parser._actions:  # pylint: disable=W0212
             if option_string:
                 if option_string in action.option_strings:
@@ -115,7 +123,7 @@ class ZanataArgParser(ArgumentParser):
         return result
 
     @staticmethod
-    def is_env_valid(env_name, env_value, env_data, args):
+    def _is_env_valid(env_name, env_value, env_data, args):
         # type (str, str, dict, argparse.Namespace) -> bool
         """The invalid env should be skipped or raise error"""
         # Skip when the env is NOT in the list of supported sub-commands
@@ -141,7 +149,7 @@ class ZanataArgParser(ArgumentParser):
             env_data = self.env_def[env_name]
             env_value = os.environ.get(env_name)
             try:
-                if not ZanataArgParser.is_env_valid(
+                if not ZanataArgParser._is_env_valid(
                         env_name, env_value, env_data, args):
                     continue
             except AssertionError as e:
