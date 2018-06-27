@@ -18,7 +18,7 @@ class ZanataArgParser(ArgumentParser):
         self.sub_parsers = None
         self.env_def = {}
         self.parent_parser = ArgumentParser(add_help=False)
-        self.parent_parser.add_argument(
+        self.add_argument(
                 '-v', '--verbose', type=str, default='INFO',
                 metavar='VERBOSE_LEVEL',
                 help='Valid values: %s'
