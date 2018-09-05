@@ -65,8 +65,8 @@ class ColoredFormatter(logging.Formatter):
 
     @staticmethod
     def _color(colors, content):
-        if os.getenv('LOGGING_NO_COLOR', ''):
-            return
+        if os.getenv("LOGGING_NO_COLOR", ""):
+            return ""
         return "\033[%d;%dm%s\033[0m" % (colors[0], colors[1], content)
 
     def format(self, record):
