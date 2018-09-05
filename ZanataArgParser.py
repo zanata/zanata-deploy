@@ -65,16 +65,22 @@ class ColoredFormatter(logging.Formatter):
 
     @staticmethod
     def _color(colors, content):
+        if os.getenv('LOGGING_NO_COLOR', ''):
+            return
         return "\033[%d;%dm%s\033[0m" % (colors[0], colors[1], content)
 
     def format(self, record):
-        colors = ColoredFormatter.COLOR_MAPPING.get(
-                record.levelname, ColoredFormatter.COLOR_MAPPING['DEBUG'])
-        record.levelname = ColoredFormatter._color(colors, record.levelname)
-        record.message = ColoredFormatter._color(colors, record.getMessage())
-        if self.usesTime():
-            record.asctime = ColoredFormatter._color(
-                    colors, self.formatTime(record, self.datefmt))
+        if not os.getenv('LOGGING_NO_COLOR', ''):
+            # Turn of color with env LOGGING_NO_COLOR=1
+            colors = ColoredFormatter.COLOR_MAPPING.get(
+                    record.levelname, ColoredFormatter.COLOR_MAPPING['DEBUG'])
+            record.levelname = ColoredFormatter._color(
+                    colors, record.levelname)
+            record.message = ColoredFormatter._color(
+                    colors, record.getMessage())
+            if self.usesTime():
+                record.asctime = ColoredFormatter._color(
+                        colors, self.formatTime(record, self.datefmt))
         try:
             s = self._fmt % record.__dict__
         except UnicodeDecodeError as e:

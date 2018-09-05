@@ -23,12 +23,12 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 import os
-import subprocess
 import sys
 
 from ZanataArgParser import ZanataArgParser  # pylint: disable=E0401
 from ZanataFunctions import GitHelper, SshHost, WORK_ROOT
 from ZanataFunctions import mkdir_p, working_directory
+from ZanataFunctions import exec_check_call, exec_check_output
 
 try:
     # We need to import 'List' and 'Any' for mypy to work
@@ -71,11 +71,16 @@ class RpmRepoHost(SshHost):
         self.rsync(src_dir, self.local_dir, ['--delete'])
 
     def update_epel_repos(
-            self, spec_file, version='auto', dist_versions=None):
+            self, spec_file, version='auto',
+            tarball_dir=None, dist_versions=None):
         """Update all EPEL repositories
 
         Args:
             spec_file (str): RPM spec file
+            tarball_dir (str): Default to None.
+                    Tarballs are downloaded to this directory.
+                    If not specified, it downloads inside container,
+                    which you cannot reused.
             dist_versions (List[str]): Defaults to ["7", "6"].
                     List of distrion versions to update.
         """
@@ -84,7 +89,7 @@ class RpmRepoHost(SshHost):
         for dist in dist_versions:
             logging.info("Update EL%s repo", dist)
             elrepo = ElRepo(dist, self.local_dir)
-            elrepo.build_and_update(spec_file, version)
+            elrepo.build_and_update(spec_file, version, tarball_dir)
 
     def push(self):
         # type (str) -> None
@@ -128,28 +133,42 @@ class ElRepo(object):  # pylint: disable=too-few-public-methods
         self.dist_ver = dist_ver
         self.local_dir = local_dir
 
-    def build_and_update(self, spec_file, version=None):
-        # type () -> None
-        """Build RPM and update dnf/yum repository
+    def build_and_update(self, spec_file, version=None, tarball_dir=None):
+        # type (str, str, str) -> None
+        """build RPM and update yum repo
+
+        This program uses docker container,
+        docker.io/zanata/centos-repo-builder,
+        to update the repository.
 
         Args:
-            spec_file (str): RPM spec file
+            spec_file (str): RPM spec file.
+                    This should be related to local_dir.
+            version (str, optional): Defaults to None.
+            tarball_dir ([type], optional): Defaults to None.
+                    tarballs are downloaded to this directory.
         """
+        docker_cmd = '/usr/bin/docker'
         with working_directory(self.local_dir):
             volume_name = "zanata-el-%s-repo" % self.dist_ver
-            vols = subprocess.check_output([
-                    'docker', 'volume', 'ls', '-q']).rstrip().split('\n')
+            vols = exec_check_output([
+                    docker_cmd, 'volume', 'ls', '-q']).split('\n')
             if volume_name not in vols:
-                subprocess.check_call([
-                        'docker', 'volume', 'create', '--name', volume_name])
+                exec_check_call([
+                        docker_cmd, 'volume', 'create', '--name', volume_name])
 
             docker_run_cmd = [
-                    "docker", "run", "--rm", "--name",
+                    docker_cmd, "run", "--rm", "--name",
                     "zanata-el-{}-builder".format(self.dist_ver),
                     "-v", "{}:/repo:Z".format(volume_name),
-                    "-v", "/tmp:/rpmbuild/SOURCES:Z",
                     "-v", "{}:/repo_host_dir:Z".format(self.local_dir),
-                    "-v", "{}:/output_dir:Z".format(self.local_dir),
+                    "-v", "{}:/output_dir:Z".format(self.local_dir)]
+
+            if tarball_dir:
+                docker_run_cmd += [
+                        "-v", "%s:/rpmbuild/SOURCES:Z" % tarball_dir]
+
+            docker_run_cmd += [
                     "docker.io/zanata/centos-repo-builder:{}".format(
                             self.dist_ver),
                     "-S", "/repo_host_dir/",
@@ -166,8 +185,7 @@ class ElRepo(object):  # pylint: disable=too-few-public-methods
                 docker_run_cmd += ['-u', version]
 
             docker_run_cmd.append(spec_file)
-            logging.info("Run command: %s", " ".join(docker_run_cmd))
-            subprocess.check_call(docker_run_cmd)
+            exec_check_call(docker_run_cmd)
 
 
 def main(argv=None):

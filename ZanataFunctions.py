@@ -77,7 +77,7 @@ def exec_call(cmd_list, **kwargs):
         int: exit status of command.
     """
     logging.debug("Running command: %s", " ".join(cmd_list))
-    return subprocess.call(cmd_list, **kwargs)
+    return subprocess.call(cmd_list, **kwargs)  # nosec
 
 
 def exec_check_call(cmd_list, **kwargs):
@@ -102,7 +102,7 @@ def exec_check_call(cmd_list, **kwargs):
     """
     logging.debug("Running command: %s", " ".join(cmd_list))
     try:
-        return subprocess.check_call(cmd_list, **kwargs)
+        return subprocess.check_call(cmd_list, **kwargs)  # nosec
     except subprocess.CalledProcessError as e:
         raise e
 
@@ -130,7 +130,7 @@ def exec_check_output(cmd_list, **kwargs):
     """
     logging.debug("Running command: %s", " ".join(cmd_list))
     try:
-        return subprocess.check_output(cmd_list, **kwargs).rstrip()
+        return subprocess.check_output(cmd_list, **kwargs).rstrip()  # nosec
     except subprocess.CalledProcessError as e:
         raise e
 
@@ -416,9 +416,7 @@ class SshHost(object):
 
         if options:
             cmd_prefix += options
-        full_cmd = cmd_prefix + [src, dest]
-        logging.debug(" ".join(full_cmd))
-        subprocess.check_call(full_cmd)
+        exec_check_call(cmd_prefix + [src, dest])
 
 
 class UrlHelper(object):
